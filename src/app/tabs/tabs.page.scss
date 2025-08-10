@@ -1,0 +1,45 @@
+:host {
+  /* posizionamento FAB centrato */
+  .ion-fab-custom {
+    transform: translateY(-8px);
+  }
+
+  /* ===== Action Sheet theme ===== */
+  .custom-action-sheet {
+    /* contenitore */
+    --background: var(--ion-color-dark);
+    --backdrop-opacity: 0.5;
+    --color: var(--ion-color-light);
+    --button-color: var(--ion-color-light);
+    --title-color: var(--ion-color-light);
+
+    /* iOS / MD container radius */
+    --border-radius: 16px;
+  }
+
+  /* pulsanti con icone colorate */
+  .custom-action-sheet .btn-questionario ion-icon {
+    color: var(--ion-color-primary);
+  }
+  .custom-action-sheet .btn-refresh ion-icon {
+    color: var(--ion-color-tertiary);
+  }
+  .custom-action-sheet .btn-lista ion-icon {
+    color: var(--ion-color-medium);
+  }
+  .custom-action-sheet .btn-cancel ion-icon {
+    color: var(--ion-color-danger);
+  }
+
+  /* testo un filo più grande per leggibilità */
+  .custom-action-sheet .action-sheet-button {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  /* placeholder tab centrale invisibile ma mantiene spaziatura */
+  .ion-tab-button-placeholder {
+    pointer-events: none;
+    opacity: 0;
+  }
+}

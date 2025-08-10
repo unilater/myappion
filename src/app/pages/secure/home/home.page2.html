@@ -1,0 +1,106 @@
+ion-header collapse="fade" [translucent]="true">
+  <ion-toolbar color="dark">
+    <ion-title color="light">Home</ion-title>
+    <ion-buttons slot="primary">
+      <ion-button color="secondary" routerLink="/settings" aria-label="Impostazioni">
+        <ion-icon slot="icon-only" name="cog"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Home</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="ion-padding">
+
+    <!-- Skeleton profilo mentre carica -->
+    <ion-skeleton-text *ngIf="!content_loaded" animated style="width: 100%; height: 150px; border-radius: 8px;"></ion-skeleton-text>
+
+    <!-- CARD PROFILO UTENTE -->
+    <ion-card *ngIf="content_loaded" class="animate__animated animate__fadeIn">
+      <ion-card-header>
+        <ion-card-title>Profilo Utente</ion-card-title>
+      </ion-card-header>
+      <ion-card-content>
+        <ion-list lines="none">
+          <ion-item>
+            <ion-label>
+              <h3>Nome</h3>
+              <p>{{ userProfile.name_first }} {{ userProfile.name_last }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>
+              <h3>Email</h3>
+              <p>{{ userProfile.email }}</p>
+            </ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-label>
+              <h3>Questionario completato</h3>
+              <p>{{ questionarioCompletato ? 'Sì' : 'No' }}</p>
+            </ion-label>
+          </ion-item>
+        </ion-list>
+
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+          <ion-button *ngIf="needsProfileCompletion" color="warning" expand="block" size="large" (click)="goToProfile()" aria-label="Completa il Profilo">
+            Completa il Profilo
+          </ion-button>
+
+          <ion-button *ngIf="needsQuestionarioCompletion" color="tertiary" expand="block" size="large" (click)="goToQuestionario()" aria-label="Compila Questionario">
+            Compila Questionario
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Skeleton menu mentre carica -->
+    <ion-skeleton-text *ngIf="!content_loaded" animated style="width: 100%; height: 300px; border-radius: 8px; margin-top: 20px;"></ion-skeleton-text>
+
+    <!-- SEZIONI DIRITTI E AGEVOLAZIONI -->
+    <ion-card *ngIf="content_loaded && !needsProfileCompletion && !needsQuestionarioCompletion" class="animate__animated animate__fadeIn" style="margin-top: 20px;">
+      <ion-card-header>
+        <ion-card-title>Diritti e Agevolazioni</ion-card-title>
+      </ion-card-header>
+      <ion-list lines="none">
+
+        <!-- Ciclo dinamico sulle section -->
+        <ng-container *ngFor="let section of sections; let i = index">
+          <!-- Header item cliccabile -->
+          <ion-item button (click)="toggleSection(i)"
+                    lines="full"
+                    detail="false"
+                    color="primary"
+                    aria-expanded="{{ section.expanded ? 'true' : 'false' }}"
+                    aria-controls="section-content-{{i}}"
+                    role="button"
+                    tabindex="0">
+            <ion-label>
+              <strong>{{ section.title }}</strong>
+            </ion-label>
+            <ion-icon [name]="section.expanded ? 'chevron-up' : 'chevron-down'" slot="end" aria-hidden="true"></ion-icon>
+          </ion-item>
+
+          <!-- Contenuto, render HTML puro o placeholder -->
+          <ion-item *ngIf="section.expanded"
+                    lines="none"
+                    class="expanded-content"
+                    id="section-content-{{i}}"
+                    tabindex="0"
+                    role="region"
+                    aria-live="polite">
+            <div [innerHTML]="section.content"></div>
+          </ion-item>
+        </ng-container>
+
+      </ion-list>
+    </ion-card>
+
+  </div>
+</ion-content>

@@ -1,0 +1,50 @@
+:host {
+  body {
+    background-color: var(--ion-color-dark);
+  }
+
+  ion-content {
+    --background: linear-gradient(135deg, var(--ion-color-dark), var(--ion-color-primary));
+  }
+
+  ion-item {
+    --border-radius: 8px;
+    margin-bottom: 8px;
+    --background: rgba(255,255,255,0.05); /* leggero contrasto sul fondo campo */
+    --color: var(--ion-color-light);      /* colore testo label */
+  }
+
+  /* Colore testo e placeholder input */
+  ion-input, ion-textarea {
+    color: var(--ion-color-light) !important; /* testo chiaro */
+    --color: var(--ion-color-light) !important;
+    caret-color: var(--ion-color-tertiary);   /* colore cursore */
+  }
+
+  /* Placeholder più leggibile */
+  ion-input::part(native)::placeholder,
+  ion-textarea::part(native)::placeholder {
+    color: color-mix(in srgb, var(--ion-color-light) 70%, transparent);
+    opacity: 1;
+  }
+
+  /* Label floating */
+  ion-label {
+    color: var(--ion-color-light) !important;
+  }
+
+  .logo-container {
+    text-align: center;
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--ion-color-light);
+    }
+
+    p {
+      margin-bottom: 42px;
+      color: var(--ion-color-medium);
+    }
+  }
+}

@@ -1,0 +1,53 @@
+<ion-header collapse="fade" [translucent]="true">
+  <ion-toolbar color="dark">
+    <ion-buttons slot="start">
+      <ion-back-button
+        color="secondary"
+        text="Home"
+        defaultHref="/home"
+        aria-label="Torna alla Home">
+      </ion-back-button>
+    </ion-buttons>
+    <ion-title color="light">Impostazioni</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Profilo utente -->
+  <ion-card class="ion-no-margin profile-card">
+    <ion-card-content>
+      <h1>
+        <ion-text color="tertiary">
+          <strong>{{ userName || '—' }}</strong>
+        </ion-text>
+      </h1>
+      <p>
+        <ion-text color="medium">{{ userEmail || '—' }}</ion-text>
+      </p>
+    </ion-card-content>
+  </ion-card>
+
+  <div class="ion-padding">
+    <!-- Sezione Personale -->
+    <ion-list-header class="ion-list-header-small">
+      <ion-label><ion-text color="tertiary">Personale</ion-text></ion-label>
+    </ion-list-header>
+
+    <ion-list lines="full">
+      <ion-item color="primary" button routerLink="/settings/profile/edit" aria-label="Modifica profilo">
+        <ion-icon slot="start" name="person-outline" color="medium"></ion-icon>
+        <ion-label><h3>Modifica profilo</h3></ion-label>
+      </ion-item>
+    </ion-list>
+
+    <hr class="hr-medium">
+
+    <!-- Logout -->
+    <ion-list lines="full">
+      <ion-item color="primary" button detail="false" (click)="signOut()" aria-label="Esci">
+        <ion-icon slot="start" name="log-out-outline" color="light"></ion-icon>
+        <ion-label color="light"><h3>Esci</h3></ion-label>
+      </ion-item>
+    </ion-list>
+  </div>
+</ion-content>

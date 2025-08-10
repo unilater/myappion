@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tutti i miei diritti di famiglia</string>
+    <string name="title_activity_main">Tutti i miei diritti di famiglia</string>
+    <string name="package_name">com.galeazzip.dirittifamiglia</string>
+    <string name="custom_url_scheme">com.galeazzip.dirittifamiglia</string>
+</resources>

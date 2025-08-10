@@ -1,0 +1,128 @@
+<ion-header collapse="fade" [translucent]="true">
+  <ion-toolbar color="dark">
+    <ion-title color="light">Home</ion-title>
+    <ion-buttons slot="primary">
+      <ion-button color="secondary" routerLink="/settings" aria-label="Impostazioni">
+        <ion-icon slot="icon-only" name="cog"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="home-page">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Home</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-refresher slot="fixed" (ionRefresh)="loadUserProfile && loadUserProfile(); $event.target.complete()">
+    <ion-refresher-content></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="ion-padding">
+
+    <!-- Skeleton -->
+    <ion-skeleton-text *ngIf="!content_loaded" animated style="width:100%; height:170px; border-radius:12px;"></ion-skeleton-text>
+    <ion-skeleton-text *ngIf="!content_loaded" animated style="width:100%; height:220px; border-radius:12px; margin-top:12px;"></ion-skeleton-text>
+
+    <!-- Benvenuto + Profilo -->
+    <ion-card *ngIf="content_loaded" class="card profile">
+      <ion-card-content>
+        <div class="heading">
+          <h1>Ciao, <span>{{ (userProfile.name_first + ' ' + userProfile.name_last) || 'Utente' }}</span></h1>
+          <p class="muted">{{ userProfile.email || '—' }}</p>
+        </div>
+
+        <div *ngIf="needsProfileCompletion" class="notice">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          <div>
+            <strong>Completa il profilo</strong>
+            <p>Ci aiuta a personalizzare le domande e i risultati.</p>
+          </div>
+        </div>
+
+        <div class="cta-row">
+          <ion-button *ngIf="needsProfileCompletion"
+                      color="warning" expand="block" size="large"
+                      routerLink="/settings/profile/edit" aria-label="Completa il profilo">
+            Completa il profilo
+          </ion-button>
+
+          <ion-button *ngIf="!needsProfileCompletion"
+                      color="tertiary" expand="block" size="large"
+                      routerLink="/questionari" aria-label="Compila Questionari">
+            Compila Questionari
+          </ion-button>
+
+          <ion-button *ngIf="!needsProfileCompletion"
+                      fill="outline" color="light" expand="block" size="large"
+                      routerLink="/ai" aria-label="Consulta tuoi diritti">
+            CONSULTA I TUOI DIRITTI
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Come funziona -->
+    <ion-card *ngIf="content_loaded" class="card howto">
+      <ion-card-header>
+        <ion-card-title>Come funziona</ion-card-title>
+      </ion-card-header>
+
+      <ion-card-content>
+        <div class="steps">
+          <div class="step">
+            <div class="dot">
+              <ion-icon name="clipboard-outline"></ion-icon>
+            </div>
+            <div class="body">
+              <h3>1. Compila le domande</h3>
+              <p>Rispondi al questionario: bastano pochi minuti.</p>
+            </div>
+          </div>
+
+          <div class="connector"></div>
+
+          <div class="step">
+            <div class="dot">
+              <ion-icon name="hourglass-outline"></ion-icon>
+            </div>
+            <div class="body">
+              <h3>2. Invio ed elaborazione</h3>
+              <p>Dopo l’invio, il sistema elabora automaticamente (2–5 minuti).</p>
+            </div>
+          </div>
+
+          <div class="connector"></div>
+
+          <div class="step">
+            <div class="dot">
+              <ion-icon name="shield-checkmark-outline"></ion-icon>
+            </div>
+            <div class="body">
+              <h3>3. Diritti e agevolazioni</h3>
+              <p>Vai nella sezione <strong>DIRITTI</strong> per consultare i risultati aggiornati.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <ion-button color="tertiary" routerLink="/questionari">
+            <ion-icon name="create-outline" slot="start"></ion-icon>
+            Inizia il questionario
+          </ion-button>
+          <ion-button fill="clear" color="light" routerLink="/ai">
+            <ion-icon name="sparkles-outline" slot="start"></ion-icon>
+            Apri Diritti (AI)
+          </ion-button>
+        </div>
+
+        <ion-note class="hint">
+          Suggerimento: se non vedi subito i risultati in <em>Diritti</em>, aggiorna dopo qualche minuto.
+        </ion-note>
+      </ion-card-content>
+    </ion-card>
+
+  </div>
+</ion-content>

@@ -1,0 +1,72 @@
+<ion-header collapse="fade" [translucent]="true">
+  <ion-toolbar color="dark">
+    <ion-buttons slot="start">
+      <ion-back-button color="secondary" text="Pagamenti" defaultHref="/payments"></ion-back-button>
+    </ion-buttons>
+    <ion-title color="light">Dettagli</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+
+  <div class="ion-padding">
+
+    <ion-list-header class="ion-list-header-small">
+      <ion-label><ion-text color="tertiary">Informazioni</ion-text></ion-label>
+    </ion-list-header>
+
+    <ion-list class="list-custom" lines="full">
+      <ion-item color="primary">
+        <ion-label><p>Importo</p></ion-label>
+        <ion-badge color="danger" slot="end">- €8,60</ion-badge>
+      </ion-item>
+      <ion-item color="primary">
+        <ion-label><p>Stato</p></ion-label>
+        <ion-input readonly slot="end" value="Completato"></ion-input>
+      </ion-item>
+      <ion-item color="primary">
+        <ion-label><p>Data</p></ion-label>
+        <ion-input readonly slot="end" value="01/06/2022 09:21"></ion-input>
+      </ion-item>
+      <ion-item color="primary">
+        <ion-label><p>Esercente</p></ion-label>
+        <ion-input readonly slot="end" value="Starbucks New York"></ion-input>
+      </ion-item>
+      <ion-item color="primary">
+        <ion-label><p>ID Transazione</p></ion-label>
+        <ion-input readonly slot="end" value="848-14E-11V"></ion-input>
+      </ion-item>
+    </ion-list>
+
+    <hr class="hr-medium">
+
+    <ion-list-header class="ion-list-header-small">
+      <ion-label><ion-text color="tertiary">Azioni</ion-text></ion-label>
+    </ion-list-header>
+
+    <ion-list class="list-custom" lines="full">
+      <ion-item color="primary">
+        <ion-avatar slot="start" class="ion-avatar-default-icon">
+          <ion-icon color="tertiary" name="receipt"></ion-icon>
+        </ion-avatar>
+        <ion-label>
+          <h3>Ricevuta</h3>
+          <p class="font-size-smallest">Visualizza fattura digitale</p>
+        </ion-label>
+        <ion-button color="secondary" slot="end">Visualizza</ion-button>
+      </ion-item>
+
+      <ion-item color="primary" button>
+        <ion-avatar slot="start" class="ion-avatar-default-icon">
+          <ion-icon color="tertiary" name="chatbox"></ion-icon>
+        </ion-avatar>
+        <ion-label>
+          <h3>Contatta esercente</h3>
+          <p class="font-size-smallest">Invia messaggio</p>
+        </ion-label>
+      </ion-item>
+    </ion-list>
+
+  </div>
+
+</ion-content>

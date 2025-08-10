@@ -1,0 +1,21 @@
+import { NgModule } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
+import { IonicModule } from '@ionic/angular';
+import { QuestionarioPageRoutingModule } from './questionario-routing.module';
+import { QuestionarioPage } from './questionario.page';
+
+
+
+@NgModule({
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    IonicModule,
+    QuestionarioPageRoutingModule
+  ],
+  declarations: [QuestionarioPage]
+})
+export class QuestionarioPageModule {}

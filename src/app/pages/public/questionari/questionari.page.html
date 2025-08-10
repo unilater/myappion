@@ -1,0 +1,52 @@
+<ion-header collapse="fade" [translucent]="true" class="app-header">
+  <ion-toolbar color="dark">
+    <ion-title color="light">Compila Questionari</ion-title>
+    <ion-buttons slot="primary">
+      <ion-button color="secondary" (click)="load()" aria-label="Aggiorna">
+        <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true" class="page-questionari">
+  <!-- Header condensato -->
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Questionari</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <!-- Pull to refresh -->
+  <ion-refresher slot="fixed" (ionRefresh)="load($event)">
+    <ion-refresher-content pullingText="Tira per aggiornare"></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="ion-padding">
+    <!-- Skeleton loading -->
+    <ng-container *ngIf="loading">
+      <div *ngFor="let s of [1,2,3]" class="sk-card"></div>
+    </ng-container>
+
+    <!-- Lista questionari -->
+    <ng-container *ngIf="!loading && items.length; else vuoto">
+      <div class="q-card" *ngFor="let q of items; trackBy: trackById" (click)="apri(q.id)">
+        <div class="q-header">
+          <h2 class="q-title">{{ q.titolo }}</h2>
+          <p class="q-desc" *ngIf="q.descrizione">{{ q.descrizione }}</p>
+          <p class="q-meta" *ngIf="q.num_domande != null">Domande: {{ q.num_domande }}</p>
+        </div>
+        <ion-icon name="chevron-forward" class="q-caret"></ion-icon>
+      </div>
+    </ng-container>
+
+    <!-- Stato vuoto -->
+    <ng-template #vuoto>
+      <div class="empty">
+        <ion-icon name="document-text-outline"></ion-icon>
+        <h2>Nessun questionario</h2>
+        <p>Riprovare più tardi.</p>
+      </div>
+    </ng-template>
+  </div>
+</ion-content>

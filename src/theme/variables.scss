@@ -1,0 +1,135 @@
+/* Ionic Variables and Theming — versione “accesa”
+   --------------------------------------------- */
+
+:root {
+  /* ===== Brand (base logo) ===== */
+  --brand-ocean:  #1F4E61;
+  --brand-teal:   #2F4F4E;
+  --brand-brick:  #A4474E;
+  --brand-mist:   #9CAAB2;
+  --brand-white:  #FFFFFF;
+  --brand-dark:   #0F1F23;
+
+  /* ===== Versioni più brillanti per UI ===== */
+  --ocean-bright: #2F7E93; /* +lum/+sat del primary per CTA */
+  --ocean-shade:  #296f82;
+  --ocean-tint:   #4f9fb3;
+
+  --teal-bright:  #3E6F6D; /* teal più vivo per secondary */
+  --teal-shade:   #355f5d;
+  --teal-tint:    #5a8a88;
+
+  --brick-bright: #C7545C; /* accent più brillante */
+  --brick-shade:  #ad4951;
+  --brick-tint:   #d8737a;
+
+  --mist-strong:  #B8C3C9; /* medium più leggibile */
+  --mist-shade:   #9fabb1;
+  --mist-tint:    #cdd6da;
+
+  /** ========== Ionic Semantic Colors (bright) ========== **/
+
+  /** primary => ocean bright (per bottoni principali) **/
+  --ion-color-primary: var(--ocean-bright);
+  --ion-color-primary-rgb: 47,126,147;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255,255,255;
+  --ion-color-primary-shade: var(--ocean-shade);
+  --ion-color-primary-tint:  var(--ocean-tint);
+
+  /** secondary => teal bright (per azioni secondarie) **/
+  --ion-color-secondary: var(--teal-bright);
+  --ion-color-secondary-rgb: 62,111,109;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255,255,255;
+  --ion-color-secondary-shade: var(--teal-shade);
+  --ion-color-secondary-tint:  var(--teal-tint);
+
+  /** tertiary => brick bright (accenti/PayPal/etc.) **/
+  --ion-color-tertiary: var(--brick-bright);
+  --ion-color-tertiary-rgb: 199,84,92;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255,255,255;
+  --ion-color-tertiary-shade: var(--brick-shade);
+  --ion-color-tertiary-tint:  var(--brick-tint);
+
+  /** success / warning / danger (invariati) **/
+  --ion-color-success: #10dc60;
+  --ion-color-success-rgb: 16,220,96;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255,255,255;
+  --ion-color-success-shade: #0ec254;
+  --ion-color-success-tint: #28e070;
+
+  --ion-color-warning: #ffce00;
+  --ion-color-warning-rgb: 255,206,0;
+  --ion-color-warning-contrast: #000000;
+  --ion-color-warning-contrast-rgb: 0,0,0;
+  --ion-color-warning-shade: #e0b500;
+  --ion-color-warning-tint: #ffd31a;
+
+  --ion-color-danger: #f53d3d;
+  --ion-color-danger-rgb: 245,61,61;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255,255,255;
+  --ion-color-danger-shade: #d83636;
+  --ion-color-danger-tint: #f65050;
+
+  /** dark / medium / light **/
+  --ion-color-dark: var(--brand-dark);
+  --ion-color-dark-rgb: 15,31,35;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255,255,255;
+  --ion-color-dark-shade: #0c181b;
+  --ion-color-dark-tint:  #2c3a3e;
+
+  --ion-color-medium: var(--mist-strong);
+  --ion-color-medium-rgb: 184,195,201;
+  --ion-color-medium-contrast: #0b1619; /* testo scuro per chip/badge medium */
+  --ion-color-medium-contrast-rgb: 11,22,25;
+  --ion-color-medium-shade: var(--mist-shade);
+  --ion-color-medium-tint:  var(--mist-tint);
+
+  --ion-color-light: #f4f4f4;
+  --ion-color-light-rgb: 244,244,244;
+  --ion-color-light-contrast: #000000;
+  --ion-color-light-contrast-rgb: 0,0,0;
+  --ion-color-light-shade: #d9d9d9;
+  --ion-color-light-tint:  #f8f8f8;
+
+  /* Fondo e testo globali (dark app) */
+  --ion-background-color: #0b1619;
+  --ion-text-color: #ffffff;
+
+  /* Step più “staccati” per contrasto */
+  --ion-color-step-100: #13262a;
+  --ion-color-step-200: #1b3a3e;
+  --ion-color-step-300: #254c53;
+  --ion-color-step-400: #2f5f68;
+  --ion-color-step-500: #3b717c;
+  --ion-color-step-600: #488391;
+  --ion-color-step-700: #5696a5;
+  --ion-color-step-800: #65a9b9;
+  --ion-color-step-900: #74bdcd;
+}
+
+/* ===== Dark mode (manteniamo bright, alziamo ancora i contrasti dove utile) ===== */
+@media (prefers-color-scheme: dark) {
+  body {
+    --ion-color-primary: var(--ocean-bright);
+    --ion-color-primary-contrast: #ffffff;
+    --ion-color-secondary: var(--teal-bright);
+    --ion-color-secondary-contrast: #ffffff;
+    --ion-color-tertiary: var(--brick-bright);
+    --ion-color-tertiary-contrast: #ffffff;
+
+    --ion-background-color: #0b1619;
+    --ion-text-color: #ffffff;
+    --ion-border-color: #1c2a2e;
+
+    --ion-item-background: #0f1f23;
+    --ion-toolbar-background: #0f1f23;
+    --ion-tab-bar-background: #0f1f23;
+    --ion-card-background: #13262a;
+  }
+}

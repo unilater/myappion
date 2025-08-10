@@ -1,0 +1,9 @@
+{
+  "appId": "com.galeazzip.dirittifamiglia",
+  "appName": "Tutti i miei diritti di famiglia",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "ios": {
+    "scheme": "Ionic Start Theme"
+  }
+}

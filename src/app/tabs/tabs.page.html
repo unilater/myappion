@@ -1,0 +1,37 @@
+<ion-tabs>
+
+  <ion-tab-bar color="primary" slot="bottom">
+
+    <ion-tab-button tab="home">
+      <ion-icon name="home-outline"></ion-icon>
+      <ion-label>Home</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="ai">
+      <ion-icon name="analytics-outline"></ion-icon>
+      <ion-label>Diritti</ion-label>
+    </ion-tab-button>
+
+    <!-- Placeholder for FAB -->
+    <ion-tab-button class="ion-tab-button-placeholder">
+    </ion-tab-button>
+
+    <ion-tab-button tab="payments">
+      <ion-icon name="card-outline"></ion-icon>
+      <ion-label>Pagamenti</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button tab="questionari">
+      <ion-icon name="clipboard-outline"></ion-icon>
+      <ion-label>Questionari</ion-label>
+    </ion-tab-button>
+
+  </ion-tab-bar>
+
+  <ion-fab class="ion-fab-custom" vertical="bottom" horizontal="center" slot="fixed" (click)="selectAction()">
+    <ion-fab-button color="dark">
+      <ion-icon name="add-outline"></ion-icon>
+    </ion-fab-button>
+  </ion-fab>
+
+</ion-tabs>

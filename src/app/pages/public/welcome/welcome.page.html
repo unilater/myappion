@@ -1,0 +1,103 @@
+<ion-content>
+  <swiper
+    class="swiper-welcome"
+    #swiper
+    [config]="config"
+    (slideChange)="swiperSlideChanged($event)"
+    (reachEnd)="onLastSlide()"
+  >
+
+    <!-- Slide 1: Logo + payoff -->
+    <ng-template swiperSlide>
+      <img class="brand-logo" [src]="logoSrc" alt="Tutti i miei diritti di famiglia" />
+      <h3>
+        <ion-text color="light">Tutti i tuoi diritti di famiglia</ion-text>
+      </h3>
+      <p>
+        <ion-text color="medium">
+          Scopri agevolazioni, tutele legali e servizi sociali pensati per te e la tua famiglia.
+        </ion-text>
+      </p>
+    </ng-template>
+
+    <!-- Slide 2: Salute e Assistenza -->
+    <ng-template swiperSlide>
+      <ion-icon name="medkit" size="large"></ion-icon>
+      <h3>
+        <ion-text color="light">Salute e Assistenza</ion-text>
+      </h3>
+      <p>
+        <ion-text color="medium">
+          Accedi a tutte le informazioni su diritti sanitari, farmaci e supporto psicologico.
+        </ion-text>
+      </p>
+    </ng-template>
+
+    <!-- Slide 3: Casa e Alloggio -->
+    <ng-template swiperSlide>
+      <ion-icon name="home-outline" size="large"></ion-icon>
+      <h3>
+        <ion-text color="light">Casa e Alloggio</ion-text>
+      </h3>
+      <p>
+        <ion-text color="medium">
+          Scopri le agevolazioni per l’affitto, i programmi di housing sociale e molto altro.
+        </ion-text>
+      </p>
+    </ng-template>
+
+    <!-- Slide 4: Supporto Legale -->
+    <ng-template swiperSlide>
+      <ion-icon name="gavel" size="large"></ion-icon>
+      <h3>
+        <ion-text color="light">Supporto Legale</ion-text>
+      </h3>
+      <p>
+        <ion-text color="medium">
+          Trova consulenza gratuita, tutele e assistenza in caso di discriminazioni o controversie.
+        </ion-text>
+      </p>
+    </ng-template>
+
+  </swiper>
+</ion-content>
+
+<ion-footer class="ion-padding-bottom-large">
+  <!-- AVANTI: visibile finché NON è l’ultima slide -->
+  <ion-button
+    class="ion-margin"
+    expand="block"
+    size="large"
+    color="secondary"
+    (click)="nextSlide()"
+    *ngIf="!last_slide"
+  >
+    Avanti
+    <ion-icon slot="end" name="arrow-forward-outline"></ion-icon>
+  </ion-button>
+
+  <!-- INIZIA ORA solo alla fine -->
+  <ion-button
+    class="ion-margin"
+    expand="block"
+    size="large"
+    color="secondary"
+    (click)="getStarted()"
+    *ngIf="last_slide"
+  >
+    Inizia Ora
+  </ion-button>
+
+  <!-- PayPal solo alla fine -->
+  <ion-button
+    class="ion-margin"
+    expand="block"
+    size="large"
+    color="tertiary"
+    (click)="goToPayPal()"
+    *ngIf="last_slide"
+  >
+    Paga con PayPal
+    <ion-icon slot="end" name="logo-paypal"></ion-icon>
+  </ion-button>
+</ion-footer>
