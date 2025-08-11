@@ -22,6 +22,15 @@ export interface AiDetailsResponse {
   data: Record<string, string>;
 }
 
+// Aggiunta: tipo per questionari premium
+export interface PremiumQuestionarioListItem {
+  id: number;
+  titolo: string;
+  descrizione?: string;
+  num_domande?: number;
+  num_prompts?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DataService {
   private apiBaseUrl = 'https://pannellogaleazzi.appnativeitalia.com/api';
@@ -49,7 +58,7 @@ export class DataService {
   }
 
   // =======================
-  // Elenco questionari
+  // Elenco questionari (standard)
   // =======================
   getElencoQuestionari(): Observable<ApiResponse<Array<{ id: number; titolo: string; descrizione?: string; num_domande?: number }>>> {
     return this.http.get<ApiResponse<Array<{ id: number; titolo: string; descrizione?: string; num_domande?: number }>>>(
@@ -58,7 +67,16 @@ export class DataService {
   }
 
   // =======================
-  // Domande del questionario (ID obbligatorio)
+  // Elenco questionari PREMIUM (aggiunta)
+  // =======================
+  getElencoQuestionariPremium(): Observable<ApiResponse<PremiumQuestionarioListItem[]>> {
+    return this.http.get<ApiResponse<PremiumQuestionarioListItem[]>>(
+      `${this.apiBaseUrl}/get_questionari_premium.php?${this.ts()}`
+    );
+  }
+
+  // =======================
+  // Domande del questionario (standard)
   // =======================
   getDomandeQuestionario(questionarioId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(
@@ -67,7 +85,16 @@ export class DataService {
   }
 
   // =======================
-  // Dati questionario utente (ID obbligatorio)
+  // Domande del questionario PREMIUM (aggiunta)
+  // =======================
+  getDomandeQuestionarioPremium(questionarioId: number): Observable<ApiResponse<any[]>> {
+    return this.http.get<ApiResponse<any[]>>(
+      `${this.apiBaseUrl}/get_domande_premium.php?questionario_id=${questionarioId}&${this.ts()}`
+    );
+  }
+
+  // =======================
+  // Dati questionario utente (standard)
   // =======================
   getQuestionario(userId: number, questionarioId: number): Observable<ApiResponse<Record<string, any>>> {
     return this.http.get<ApiResponse<Record<string, any>>>(
@@ -79,6 +106,22 @@ export class DataService {
     // POST JSON: assicurati che config.php gestisca OPTIONS
     return this.http.post<ApiResponse>(
       `${this.apiBaseUrl}/questionario.php`,
+      data
+    );
+  }
+
+  // =======================
+  // Dati questionario utente PREMIUM (aggiunte)
+  // =======================
+  getQuestionarioPremium(userId: number, questionarioId: number): Observable<ApiResponse<Record<string, any>>> {
+    return this.http.get<ApiResponse<Record<string, any>>>(
+      `${this.apiBaseUrl}/questionario_premium.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
+    );
+  }
+
+  postQuestionarioPremium(data: { user_id: number; questionario_id: number; questionario: Record<string, any> }): Observable<ApiResponse> {
+    return this.http.post<ApiResponse>(
+      `${this.apiBaseUrl}/questionario_premium.php`,
       data
     );
   }

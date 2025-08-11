@@ -53,6 +53,15 @@ const routes: Routes = [
     path: 'questionari',
     loadChildren: () => import('./pages/public/questionari/questionari.module').then( m => m.QuestionariPageModule)
   },
+  {
+    path: 'premium',
+    loadChildren: () => import('./pages/premium/premium.module').then( m => m.PremiumPageModule)
+  },
+{
+  path: 'premium-detail/:id',
+  loadChildren: () => import('./pages/premium-detail/premium-detail.module')
+    .then(m => m.PremiumDetailPageModule)
+},
 ];
 @NgModule({
   imports: [

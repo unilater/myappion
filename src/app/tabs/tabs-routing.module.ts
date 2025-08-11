@@ -21,8 +21,8 @@ const routes: Routes = [
         loadChildren: () => import('../pages/public/ai/ai.module').then(m => m.AiPageModule)
       },
       {
-        path: 'payments',
-        loadChildren: () => import('../pages/secure/payments/payments.module').then(m => m.PaymentsPageModule)
+        path: 'premium',
+        loadChildren: () => import('../pages/premium/premium.module').then(m => m.PremiumPageModule)
       },
       {
         path: 'questionari',
