@@ -127,6 +127,34 @@ export class DataService {
   }
 
   // =======================
+  // UPLOAD PREMIUM (aggiunta)
+  // =======================
+  /**
+   * Carica un singolo file per una domanda di tipo "upload".
+   * Server: upload_premium.php deve accettare multipart/form-data con:
+   *  - user_id, questionario_id, tipologia_id, (opzionale) nome, file
+   */
+  uploadFilePremium(
+    userId: number,
+    questionarioId: number,
+    tipologiaId: number,
+    file: File,
+    nome?: string
+  ): Observable<ApiResponse<{ file_name?: string; url?: string; path?: string }>> {
+    const form = new FormData();
+    form.append('user_id', String(userId));
+    form.append('questionario_id', String(questionarioId));
+    form.append('tipologia_id', String(tipologiaId));
+    if (nome) form.append('nome', nome);
+    form.append('file', file, file.name);
+
+    return this.http.post<ApiResponse<{ file_name?: string; url?: string; path?: string }>>(
+      `${this.apiBaseUrl}/upload_premium.php?${this.ts()}`,
+      form
+    );
+  }
+
+  // =======================
   // Servizi AI (per-questionario)
   // =======================
   inizializzaAI(userId: number, questionarioId: number): Observable<ApiResponse<{ textResponse: string; jobs: number }>> {

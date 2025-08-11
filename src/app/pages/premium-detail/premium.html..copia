@@ -64,95 +64,31 @@
 
       <!-- Campi dello step corrente -->
       <ng-container *ngFor="let q of questions | slice:(currentStep * pageSize):(currentStep + 1) * pageSize">
-
         <!-- Number -->
-        <ion-item *ngIf="(q.tipo || '').toLowerCase() === 'number'" class="q-item">
+        <ion-item *ngIf="q.tipo === 'number'" class="q-item">
           <ion-label position="floating">{{ q.testo_domanda }}</ion-label>
           <ion-input type="number" [formControlName]="q.id.toString()"></ion-input>
         </ion-item>
 
         <!-- Text -->
-        <ion-item *ngIf="(q.tipo || '').toLowerCase() === 'testo_libero' || (q.tipo || '').toLowerCase() === 'text'" class="q-item">
+        <ion-item *ngIf="q.tipo === 'testo_libero' || q.tipo === 'text'" class="q-item">
           <ion-label position="floating">{{ q.testo_domanda }}</ion-label>
           <ion-input type="text" [formControlName]="q.id.toString()"></ion-input>
         </ion-item>
 
         <!-- Textarea -->
-        <ion-item *ngIf="(q.tipo || '').toLowerCase() === 'textarea'" class="q-item">
+        <ion-item *ngIf="q.tipo === 'textarea'" class="q-item">
           <ion-label position="floating">{{ q.testo_domanda }}</ion-label>
           <ion-textarea auto-grow="true" [formControlName]="q.id.toString()"></ion-textarea>
         </ion-item>
 
         <!-- Select -->
-        <ion-item *ngIf="(q.tipo || '').toLowerCase() === 'select'" class="q-item">
+        <ion-item *ngIf="q.tipo === 'select'" class="q-item">
           <ion-label position="floating">{{ q.testo_domanda }}</ion-label>
           <ion-select interface="action-sheet" [formControlName]="q.id.toString()">
             <ion-select-option *ngFor="let opt of q.opzioni" [value]="opt">{{ opt }}</ion-select-option>
           </ion-select>
         </ion-item>
-
-        <!-- UPLOAD -->
-        <div
-          *ngIf="(q.tipo || '').toLowerCase() === 'upload' || (!q.tipo && q.opzioni?.length)"
-          class="q-item ion-padding-vertical"
-        >
-          <h3 class="ion-padding-bottom">{{ q.testo_domanda }}</h3>
-
-          <ion-list lines="none" class="upload-list">
-            <ion-item *ngFor="let opt of q.opzioni">
-              <ion-label>
-                <div class="u-name">{{ opt?.nome }}</div>
-
-                <!-- appena selezionato (in coda locale) -->
-                <div class="u-file" *ngIf="uploads[q.id]?.[opt.id]?.file as f">
-                  Selezionato: <strong>{{ f.name }}</strong>
-                </div>
-
-                <!-- già caricato (salvato nel form) -->
-                <div class="u-file" *ngIf="!uploads[q.id]?.[opt.id]?.file && savedUploadName(q.id, opt.id) as savedName">
-                  Caricato: <strong>{{ savedName }}</strong>
-                </div>
-
-                <!-- nulla -->
-                <div class="u-file empty"
-                     *ngIf="!uploads[q.id]?.[opt.id]?.file && !savedUploadName(q.id, opt.id)">
-                  Nessun file selezionato
-                </div>
-              </ion-label>
-
-              <ion-buttons slot="end">
-                <input
-                  #fileInput
-                  type="file"
-                  hidden
-                  accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.doc,.docx,.xls,.xlsx"
-                  (change)="onFileChosen($event, q.id, opt)"
-                />
-                <ion-button fill="outline" (click)="onPickClick(fileInput)" [disabled]="isComplete" aria-label="Scegli file">
-                  <ion-icon slot="start" name="document-attach-outline"></ion-icon>
-                  Scegli
-                </ion-button>
-
-                <ion-button
-                  color="medium"
-                  fill="clear"
-                  *ngIf="uploads[q.id]?.[opt.id]?.file || savedUploadName(q.id, opt.id)"
-                  (click)="clearChosen(q.id, opt)"
-                  [disabled]="isComplete"
-                  aria-label="Rimuovi file"
-                >
-                  <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
-                </ion-button>
-              </ion-buttons>
-            </ion-item>
-          </ion-list>
-
-          <ion-note class="hint ion-padding-top">
-            Carica i documenti richiesti (es. “CU”, “Dichiarazione Redditi 2025”, “IMU”).
-            <strong>I file vengono inviati subito dopo la selezione.</strong>
-          </ion-note>
-        </div>
-
       </ng-container>
     </ion-list>
 
@@ -165,19 +101,17 @@
 
       <div class="spacer"></div>
 
-      <ion-button
-        *ngIf="currentStep < totalSteps - 1"
-        (click)="nextStep()"
-        [disabled]="!isStepValid() || isComplete">
+      <ion-button *ngIf="currentStep < totalSteps - 1"
+                  (click)="nextStep()"
+                  [disabled]="!isStepValid() || isComplete">
         Avanti
         <ion-icon slot="end" name="chevron-forward-outline"></ion-icon>
       </ion-button>
 
-      <ion-button
-        *ngIf="currentStep === totalSteps - 1"
-        type="submit"
-        color="tertiary"
-        [disabled]="questionarioForm.invalid || isComplete">
+      <ion-button *ngIf="currentStep === totalSteps - 1"
+                  type="submit"
+                  color="tertiary"
+                  [disabled]="questionarioForm.invalid || isComplete">
         Invia questionario
       </ion-button>
 
