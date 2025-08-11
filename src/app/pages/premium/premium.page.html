@@ -1,51 +1,87 @@
 <ion-header collapse="fade" [translucent]="true" class="app-header">
   <ion-toolbar color="dark">
-    <ion-title color="light">Compila Questionari Premium</ion-title>
+    <ion-title color="light">Questionari Premium</ion-title>
     <ion-buttons slot="primary">
-      <ion-button color="secondary" (click)="load()" aria-label="Aggiorna">
+      <ion-button color="secondary" (click)="load()" [attr.aria-label]="'Aggiorna'">
         <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true" class="page-questionari">
-  <!-- Header condensato -->
+<ion-content [fullscreen]="true" class="page-premium">
   <ion-header collapse="condense">
     <ion-toolbar>
-      <ion-title size="large">Questionari Premium</ion-title>
+      <ion-title size="large">Premium</ion-title>
     </ion-toolbar>
   </ion-header>
 
-  <!-- Pull to refresh -->
   <ion-refresher slot="fixed" (ionRefresh)="load($event)">
     <ion-refresher-content pullingText="Tira per aggiornare"></ion-refresher-content>
   </ion-refresher>
 
   <div class="ion-padding">
-    <!-- Skeleton loading -->
+    <!-- Skeleton -->
     <ng-container *ngIf="loading">
       <div *ngFor="let s of [1,2,3]" class="sk-card"></div>
     </ng-container>
 
-    <!-- Lista questionari -->
+    <!-- Lista -->
     <ng-container *ngIf="!loading && items.length; else vuoto">
-      <div class="q-card" *ngFor="let q of items; trackBy: trackById" (click)="apri(q.id)">
-        <div class="q-header">
+      <div class="q-card" *ngFor="let q of items; trackBy: trackById">
+        <!-- Header (apre il dettaglio) -->
+        <div class="q-header" (click)="apri(q.id)" [attr.aria-label]="'Apri ' + q.titolo">
           <h2 class="q-title">{{ q.titolo }}</h2>
           <p class="q-desc" *ngIf="q.descrizione">{{ q.descrizione }}</p>
           <p class="q-meta" *ngIf="q.num_domande != null">Domande: {{ q.num_domande }}</p>
-          <p class="q-meta" *ngIf="q.num_prompts != null">Prompt AI: {{ q.num_prompts }}</p>
         </div>
-        <ion-icon name="chevron-forward" class="q-caret"></ion-icon>
+
+        <!-- Azioni -->
+        <div class="q-actions">
+          <ion-chip [color]="q.completed ? 'success' : (q.checking ? 'medium' : 'warning')">
+            <ion-icon name="information-circle-outline"></ion-icon>
+            <ion-label>
+              <ng-container *ngIf="q.checking">Verifica…</ng-container>
+              <ng-container *ngIf="!q.checking && q.completed">Completato</ng-container>
+              <ng-container *ngIf="!q.checking && !q.completed">Incompleto</ng-container>
+            </ion-label>
+          </ion-chip>
+
+          <!-- Completa / Rivedi -->
+          <ion-button
+            fill="outline"
+            size="small"
+            (click)="apri(q.id)"
+            [disabled]="q.checking"
+            [attr.aria-label]="q.completed ? 'Rivedi questionario' : 'Completa questionario'">
+            {{ q.completed ? 'Rivedi questionario' : 'Completa questionario' }}
+          </ion-button>
+
+          <!-- Inizializza -->
+          <ion-button
+            color="tertiary"
+            size="small"
+            (click)="inizializza(q)"
+            [disabled]="q.checking || !q.completed || initLoading[q.id]"
+            [attr.aria-disabled]="(q.checking || !q.completed || initLoading[q.id]) ? 'true' : null"
+            [attr.aria-label]="'Inizializza processo AI per ' + q.titolo">
+            <ion-spinner *ngIf="initLoading[q.id]" name="crescent"></ion-spinner>
+            <ng-container *ngIf="!initLoading[q.id]">Inizializza</ng-container>
+          </ion-button>
+
+          <!-- Freccia apri -->
+          <ion-button fill="clear" (click)="apri(q.id)" [attr.aria-label]="'Apri ' + q.titolo">
+            <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
+          </ion-button>
+        </div>
       </div>
     </ng-container>
 
-    <!-- Stato vuoto -->
+    <!-- Vuoto -->
     <ng-template #vuoto>
       <div class="empty">
         <ion-icon name="document-text-outline"></ion-icon>
-        <h2>Nessun questionario premium</h2>
+        <h2>Nessun questionario</h2>
         <p>Riprovare più tardi.</p>
       </div>
     </ng-template>

@@ -1,29 +1,39 @@
 :host {
-  /* Sfondo coerente con AI */
+  /* ===== Sfondo coerente con AI ===== */
   ion-content {
     --background: linear-gradient(135deg, var(--ion-color-dark), var(--ion-color-primary));
   }
 
-  /* Card stile Pagamenti */
+  /* ===== Card ===== */
   .q-card {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    background: rgba(255,255,255, .04);
-    border-radius: 12px;
+    align-items: stretch;
+    gap: 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
     padding: 14px 16px;
     margin-bottom: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,.28);
-    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 6px 18px rgba(0,0,0,.25);
     backdrop-filter: saturate(120%) blur(2px);
-    cursor: pointer;
-    transition: background .2s ease;
+    transition: background .18s ease, transform .12s ease;
   }
-  .q-card:hover {
-    background: rgba(255,255,255, .07);
+  .q-card:hover { background: rgba(255,255,255,.07); }
+
+  /* Colonne */
+  .q-header {
+    flex: 1 1 auto;
+    min-width: 0;
+    cursor: pointer; /* solo l’header è cliccabile per aprire il dettaglio */
+  }
+  .q-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
-  /* Testi */
+  /* Titoli / testi */
   .q-title {
     font-weight: 800;
     font-size: 1.2rem;
@@ -31,49 +41,83 @@
     margin: 0 0 4px;
   }
   .q-desc {
+    margin: 0 0 4px;
     font-size: 1rem;
     line-height: 1.4;
     color: rgba(255,255,255,.9);
-    margin: 0 0 4px;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    -webkit-line-clamp: 2; line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
   .q-meta {
+    margin: 0;
     font-size: .9rem;
     font-weight: 600;
     color: rgba(255,255,255,.85);
-    margin: 0;
   }
 
-  .q-caret {
-    font-size: 20px;
-    color: rgba(255,255,255,.7);
-    margin-top: 6px;
+  .q-caret { font-size: 20px; color: rgba(255,255,255,.7); margin-top: 6px; }
+
+  /* ===== Chip stato ===== */
+  ion-chip {
+    --background: rgba(255,255,255,.08);
+    --color: #fff;
+    font-weight: 700;
+  }
+  ion-chip[color="success"] { --background: rgba(34,197,94,.18); }
+  ion-chip[color="warning"] { --background: rgba(245,158,11,.18); }
+  ion-chip[color="medium"]  { --background: rgba(148,163,184,.18); }
+
+  /* ===== Bottoni azioni ===== */
+  .q-actions ion-button {
+    --border-radius: 12px;
+    font-weight: 900;
+    box-shadow: 0 6px 14px rgba(0,0,0,.22);
   }
 
-  /* Skeleton */
+  /* Outline migliorato (prima sembrava “spento”) */
+  .q-actions ion-button[fill="outline"] {
+    --border-color: rgba(255,255,255,.45);
+    --color: #fff;
+    --background: rgba(255,255,255,.03);
+    --background-activated: rgba(255,255,255,.12);
+    --ripple-color: rgba(255,255,255,.3);
+  }
+
+  /* Stato disabled più chiaro (ma non “invisibile”) */
+  .q-actions ion-button[disabled] {
+    opacity: .55;
+    filter: grayscale(.25);
+    box-shadow: none;
+  }
+
+  /* ===== Skeleton ===== */
   .sk-card {
-    height: 56px;
+    height: 64px;
     border-radius: 12px;
     background: rgba(255,255,255,.05);
     border: 1px solid rgba(255,255,255,.08);
     margin-bottom: 10px;
   }
 
-  /* Vuoto */
+  /* ===== Vuoto ===== */
   .empty {
-    display: grid;
-    place-items: center;
-    text-align: center;
-    gap: 10px;
-    margin-top: 40px;
-    color: #fff;
+    display: grid; place-items: center; text-align: center; gap: 10px;
+    margin-top: 40px; color: #fff;
   }
-  .empty ion-icon {
-    font-size: 48px;
-    color: var(--ion-color-primary-contrast, #fff);
+  .empty ion-icon { font-size: 48px; color: var(--ion-color-primary-contrast, #fff); }
+
+  /* ===== Accessibilità: focus visibile ===== */
+  :where(.q-header, .q-actions ion-button):focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px #0ea5e9, 0 0 0 4px rgba(14,165,233,.35);
+    border-radius: 12px;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 560px) {
+    .q-card { flex-direction: column; }
+    .q-actions { justify-content: flex-end; }
   }
 }
