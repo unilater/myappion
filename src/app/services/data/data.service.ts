@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -22,7 +22,6 @@ export interface AiDetailsResponse {
   data: Record<string, string>;
 }
 
-// Aggiunta: tipo per questionari premium
 export interface PremiumQuestionarioListItem {
   id: number;
   titolo: string;
@@ -37,7 +36,7 @@ export class DataService {
 
   constructor(private http: HttpClient) {}
 
-  // Cache-buster per evitare cache senza header custom
+  // Cache-buster
   private ts() { return `_=${Date.now()}`; }
 
   // =======================
@@ -50,11 +49,7 @@ export class DataService {
   }
 
   updateProfile(data: { user_id: number; name_first: string; name_last: string }): Observable<ApiResponse> {
-    // POST JSON: assicurati che config.php gestisca OPTIONS
-    return this.http.post<ApiResponse>(
-      `${this.apiBaseUrl}/profile_update.php`,
-      data
-    );
+    return this.http.post<ApiResponse>(`${this.apiBaseUrl}/profile_update.php`, data);
   }
 
   // =======================
@@ -67,7 +62,7 @@ export class DataService {
   }
 
   // =======================
-  // Elenco questionari PREMIUM (aggiunta)
+  // Elenco questionari PREMIUM
   // =======================
   getElencoQuestionariPremium(): Observable<ApiResponse<PremiumQuestionarioListItem[]>> {
     return this.http.get<ApiResponse<PremiumQuestionarioListItem[]>>(
@@ -75,8 +70,25 @@ export class DataService {
     );
   }
 
+  /** Dettaglio “soft”: ricava info del singolo questionario dalla lista già esposta dall’API. */
+  getQuestionarioPremiumInfo(questionarioId: number): Observable<PremiumQuestionarioListItem | null> {
+    return this.getElencoQuestionariPremium().pipe(
+      map(res => {
+        if (!res?.success || !Array.isArray(res.data)) return null;
+        const found = res.data.find(q => Number(q.id) === Number(questionarioId));
+        return found ? {
+          id: Number(found.id),
+          titolo: found.titolo ?? `Questionario ${found.id}`,
+          descrizione: found.descrizione ?? '',
+          num_domande: found.num_domande ?? 0,
+          num_prompts: found.num_prompts ?? undefined
+        } : null;
+      })
+    );
+  }
+
   // =======================
-  // Domande del questionario (standard)
+  // Domande questionario (standard)
   // =======================
   getDomandeQuestionario(questionarioId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(
@@ -85,7 +97,7 @@ export class DataService {
   }
 
   // =======================
-  // Domande del questionario PREMIUM (aggiunta)
+  // Domande questionario PREMIUM
   // =======================
   getDomandeQuestionarioPremium(questionarioId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(
@@ -103,15 +115,11 @@ export class DataService {
   }
 
   postQuestionario(data: { user_id: number; questionario_id: number; questionario: Record<string, any> }): Observable<ApiResponse> {
-    // POST JSON: assicurati che config.php gestisca OPTIONS
-    return this.http.post<ApiResponse>(
-      `${this.apiBaseUrl}/questionario.php`,
-      data
-    );
+    return this.http.post<ApiResponse>(`${this.apiBaseUrl}/questionario.php`, data);
   }
 
   // =======================
-  // Dati questionario utente PREMIUM (aggiunte)
+  // Dati questionario utente PREMIUM
   // =======================
   getQuestionarioPremium(userId: number, questionarioId: number): Observable<ApiResponse<Record<string, any>>> {
     return this.http.get<ApiResponse<Record<string, any>>>(
@@ -120,27 +128,19 @@ export class DataService {
   }
 
   postQuestionarioPremium(data: { user_id: number; questionario_id: number; questionario: Record<string, any> }): Observable<ApiResponse> {
-    return this.http.post<ApiResponse>(
-      `${this.apiBaseUrl}/questionario_premium.php`,
-      data
-    );
+    return this.http.post<ApiResponse>(`${this.apiBaseUrl}/questionario_premium.php`, data);
   }
 
   // =======================
-  // UPLOAD PREMIUM (aggiunta)
+  // UPLOAD PREMIUM
   // =======================
-  /**
-   * Carica un singolo file per una domanda di tipo "upload".
-   * Server: upload_premium.php deve accettare multipart/form-data con:
-   *  - user_id, questionario_id, tipologia_id, (opzionale) nome, file
-   */
   uploadFilePremium(
     userId: number,
     questionarioId: number,
     tipologiaId: number,
     file: File,
     nome?: string
-  ): Observable<ApiResponse<{ file_name?: string; url?: string; path?: string }>> {
+  ): Observable<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string }>> {
     const form = new FormData();
     form.append('user_id', String(userId));
     form.append('questionario_id', String(questionarioId));
@@ -148,14 +148,14 @@ export class DataService {
     if (nome) form.append('nome', nome);
     form.append('file', file, file.name);
 
-    return this.http.post<ApiResponse<{ file_name?: string; url?: string; path?: string }>>(
+    return this.http.post<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string }>>(
       `${this.apiBaseUrl}/upload_premium.php?${this.ts()}`,
       form
     );
   }
 
   // =======================
-  // Servizi AI (per-questionario)
+  // Servizi AI (legacy standard)
   // =======================
   inizializzaAI(userId: number, questionarioId: number): Observable<ApiResponse<{ textResponse: string; jobs: number }>> {
     return this.http.get<ApiResponse<{ textResponse: string; jobs: number }>>(
@@ -172,6 +172,18 @@ export class DataService {
   getAiStatus(userId: number, questionarioId: number): Observable<ApiResponse<AiStatus>> {
     return this.http.get<ApiResponse<AiStatus>>(
       `${this.apiBaseUrl}/openai/status.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
+    );
+  }
+
+  // =======================
+  // Servizi AI PREMIUM (enqueue jobs)
+  // =======================
+  inizializzaPremium(
+    userId: number,
+    questionarioId: number
+  ): Observable<ApiResponse<{ enqueued: number; duplicates: number; total: number }>> {
+    return this.http.get<ApiResponse<{ enqueued: number; duplicates: number; total: number }>>(
+      `${this.apiBaseUrl}/openai/inizializza_premium.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
     );
   }
 }

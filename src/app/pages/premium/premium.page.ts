@@ -17,8 +17,10 @@ type PremiumQuestionarioItem = {
 type PremiumItemView = PremiumQuestionarioItem & {
   completed?: boolean;
   checking?: boolean;
-  initialized?: boolean; // per futuro: se inizializza già premuto
+  initialized?: boolean; // futuro: se inizializza già premuto
 };
+
+type InitStats = { enqueued?: number; duplicates?: number; total?: number };
 
 @Component({
   selector: 'app-premium',
@@ -30,6 +32,7 @@ export class PremiumPage implements OnInit {
   loading = false;
   userId: number | null = null;
 
+  // stato spinner del singolo bottone "Inizializza"
   initLoading: Record<number, boolean> = {};
 
   constructor(
@@ -94,6 +97,7 @@ export class PremiumPage implements OnInit {
       q.opzioni.every((o: any) => o && typeof o === 'object' && 'nome' in o);
     return t === 'upload' || (!t && looksLikeUploadOptions);
   }
+
   private filled(val: any): boolean {
     if (val === null || val === undefined) return false;
     if (Array.isArray(val)) return val.length > 0;
@@ -102,7 +106,12 @@ export class PremiumPage implements OnInit {
     return s.length > 0 || s === '0';
   }
 
-  // Completato = tutte le domande obbligatorie soddisfatte (upload: tutte le opzioni, se presenti)
+  /**
+   * Completato = tutte le domande OBBLIGATORIE soddisfatte
+   * - Non upload: qualunque valore non-vuoto
+   * - Upload: se esistono opzioni, ciascuna deve avere un nome file salvato;
+   *           se non ci sono opzioni, basta un oggetto non vuoto.
+   */
   private async checkAllCompletions() {
     if (!this.userId || !this.items.length) return;
 
@@ -123,6 +132,7 @@ export class PremiumPage implements OnInit {
             if (this.isUpload(q)) {
               const opts = Array.isArray(q.opzioni) ? q.opzioni : [];
               if (!opts.length) {
+                // nessuna opzione definita → basta un oggetto non vuoto
                 if (!val || typeof val !== 'object' || !this.filled(val)) return false;
               } else {
                 if (!val || typeof val !== 'object') return false;
@@ -170,7 +180,7 @@ export class PremiumPage implements OnInit {
     });
     await overlay.present();
 
-    this.data.inizializzaAI(this.userId, item.id).pipe(
+    this.data.inizializzaPremium(this.userId, item.id).pipe(
       finalize(() => {
         this.initLoading[item.id] = false;
         overlay.dismiss();
@@ -178,8 +188,16 @@ export class PremiumPage implements OnInit {
     ).subscribe({
       next: async (res) => {
         if (res?.success) {
-          await this.presentToast('Processo avviato! Controlla la sezione Diritti (AI).', 'success');
-          // FUTURO: se vuoi bloccare “Completa questionario” dopo l’avvio:
+          const stats: InitStats = (res.data ?? {});
+          const en = stats.enqueued ?? 0;
+          const du = stats.duplicates ?? 0;
+          const tot = stats.total ?? (en + du);
+
+          await this.presentToast(
+            `Processo avviato. Job in coda: ${en} (duplicati: ${du} / totale: ${tot})`,
+            'success'
+          );
+          // Se vuoi bloccare il pulsante "Completa questionario" dopo l’avvio:
           // item.initialized = true;
         } else {
           await this.presentToast(res?.message || 'Errore nell’inizializzazione', 'danger');
@@ -196,4 +214,3 @@ export class PremiumPage implements OnInit {
     await toast.present();
   }
 }
-

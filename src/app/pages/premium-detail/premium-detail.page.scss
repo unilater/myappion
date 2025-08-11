@@ -1,11 +1,10 @@
 :host {
-  /* Sfondo scuro coerente */
   ion-content.q-page {
     --background: linear-gradient(135deg, var(--ion-color-dark), var(--ion-color-primary));
     color: var(--ion-color-light);
   }
 
-  /* ================== INTRO ================== */
+  /* ===== Intro ===== */
   .intro {
     margin-top: 6px;
 
@@ -13,29 +12,27 @@
       margin: 0 0 6px;
       font-size: 1.45rem;
       font-weight: 900;
-      color: #ffffff; /* titolo molto chiaro */
+      color: #fff;
       text-shadow: 0 1px 2px rgba(0,0,0,.45);
     }
 
-    /* testo introduttivo super leggibile */
-    p {
+    .lead-intro {
       margin: 0;
       font-weight: 700;
       line-height: 1.5;
       letter-spacing: .2px;
       background: linear-gradient(90deg, #FFFFFF 0%, #EAF6FF 45%, #CDEBFF 100%);
-      background-clip: text;         /* standard */
-      -webkit-background-clip: text; /* vendor */
+      -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       color: transparent;
-      text-shadow: 0 1px 3px rgba(0,0,0,.75); /* stacco netto sullo sfondo */
+      text-shadow: 0 1px 3px rgba(0,0,0,.75);
     }
 
-    /* evidenzia il <strong> “Diritti (AI)” */
-    p strong {
+    strong {
       background: linear-gradient(90deg, #A5D8FF, #7DD3FC);
-      background-clip: text;
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       color: transparent;
       text-shadow: 0 0 10px rgba(125,211,252,.5);
@@ -43,7 +40,7 @@
     }
   }
 
-  /* ================== STEP BAR ================== */
+  /* ===== Step bar ===== */
   .stepbar {
     padding-top: 4px;
 
@@ -55,63 +52,47 @@
       gap: 10px;
     }
 
-    /* Etichetta “Step X di Y” brillante ma leggibile */
-    .row span:first-child {
+    .row .step-label {
       background: linear-gradient(90deg, #E0F2FE, #BAE6FD, #7DD3FC);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      color: transparent;
-      font-weight: 900;
-      letter-spacing: .4px;
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: transparent;
+      font-weight: 900; letter-spacing: .4px;
       text-shadow: 0 1px 2px rgba(0,0,0,.6);
     }
 
-    /* Percentuale con alto contrasto */
-    .row span:last-child {
-      color: #E2E8F0; /* slate-200 */
-      font-weight: 800;
+    .row .step-percent {
+      color: #E2E8F0; font-weight: 800;
       text-shadow: 0 1px 2px rgba(0,0,0,.6);
     }
 
     ion-progress-bar {
       --background: rgba(255,255,255,.18);
-      --progress-background: #38BDF8; /* azzurro vivo */
-      height: 10px;
-      border-radius: 999px;
+      --progress-background: #38BDF8;
+      height: 10px; border-radius: 999px;
     }
 
     .dots {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
+      display: flex; gap: 8px; margin-top: 8px;
 
       button {
-        width: 9px; height: 9px;
-        border: 0;
-        border-radius: 999px;
+        width: 9px; height: 9px; border: 0; border-radius: 999px;
         background: rgba(255,255,255,.28);
         box-shadow: 0 0 0 1px rgba(0,0,0,.25) inset;
         transition: transform .15s ease, background-color .15s ease, width .15s ease;
       }
       button.active {
-        width: 22px;
-        background: #38BDF8;
+        width: 22px; background: #38BDF8;
         box-shadow: 0 0 8px rgba(56,189,248,.7);
         transform: translateY(-1px);
       }
-      button.done {
-        background: rgba(56,189,248,.85);
-      }
-      button:disabled {
-        opacity: .9; cursor: default;
-      }
+      button.done { background: rgba(56,189,248,.85); }
+      button:disabled { opacity: .9; cursor: default; }
     }
   }
 
-  /* ================== CARD / HEADER ================== */
+  /* ===== Card ===== */
   ion-list.white-card {
-    background: rgba(6, 19, 38, .7); /* scuro + trasparenza per risalto */
+    background: rgba(6, 19, 38, .7);
     border: 1px solid rgba(255,255,255,.10);
     border-radius: 14px;
     backdrop-filter: saturate(120%) blur(2px);
@@ -125,82 +106,89 @@
     border-bottom: 1px solid rgba(255,255,255,.10);
 
     ion-label {
-      color: #F8FAFC; /* quasi bianco */
+      color: #F8FAFC;
       font-weight: 900;
       text-shadow: 0 1px 2px rgba(0,0,0,.45);
     }
 
-    /* sottotitolo con buon contrasto */
     .hint {
       margin-top: 4px;
-      color: #D1D5DB; /* gray-300 */
-      opacity: 1;
+      color: #D1D5DB;
       font-weight: 600;
       text-shadow: 0 1px 2px rgba(0,0,0,.5);
     }
   }
 
-  /* ================== ITEMS / INPUT ================== */
   .q-item {
     --background: transparent;
     border-bottom: 1px solid rgba(255,255,255,.10);
 
-    ion-label {
-      color: #E5F0FF; /* testo label molto chiaro */
-      font-weight: 800;
-      text-shadow: 0 1px 2px rgba(0,0,0,.45);
-    }
+    ion-label { color: #E5F0FF; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,.45); }
 
-    ion-input,
-    ion-textarea,
-    ion-select {
-      --color: #FFFFFF; /* testo dei campi bianco pieno */
+    ion-input, ion-textarea, ion-select {
+      --color: #fff;
       --placeholder-color: rgba(255,255,255,.75);
       font-size: 16px;
     }
 
-    /* bordo di focus chiaro ad alto contrasto */
     &:focus-within {
       box-shadow: inset 0 0 0 2px rgba(59,130,246,.6);
       border-radius: 10px;
     }
   }
 
-  /* select overlay (leggibilità) */
-  ion-select::part(text) { color: #fff; }
+  /* ===== Upload block ===== */
+  .upload-block { padding-top: 6px; }
 
-  /* ================== NAV STICKY ================== */
+  .upload-title {
+    margin: 8px 12px 6px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: #eaf6ff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  }
+
+  .upload-row {
+    --background: transparent;
+
+    .upload-label .u-name {
+      font-weight: 700; color: #fff; margin-bottom: 4px;
+    }
+
+    .u-file {
+      display: flex; align-items: center; gap: 8px;
+      &.empty { color: rgba(255,255,255,.7); }
+    }
+
+    .u-badge {
+      border-radius: 999px;
+      font-weight: 800;
+    }
+
+    .u-filename {
+      font-weight: 600; color: #e2f2ff;
+      word-break: break-word; overflow-wrap: anywhere;
+    }
+
+    .upload-actions ion-button { --border-radius: 12px; }
+  }
+
+  /* ===== Nav sticky ===== */
   .wizard-nav {
-    position: sticky;
-    bottom: 0;
+    position: sticky; bottom: 0;
     background: linear-gradient(180deg, rgba(0,0,0,0), rgba(3,6,20,.55) 40%, rgba(3,6,20,.88) 100%);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: flex; align-items: center; gap: 8px;
 
     .spacer { flex: 1 1 auto; }
 
-    ion-button {
-      --border-radius: 12px;
-      font-weight: 900;
-      box-shadow: 0 6px 14px rgba(0,0,0,.35);
-    }
+    ion-button { --border-radius: 12px; font-weight: 900; box-shadow: 0 6px 14px rgba(0,0,0,.35); }
 
-    .subhint {
-      display: block;
-      margin-left: auto;
-      color: #D1FAE5; /* green-100 per contrasto */
-      opacity: .95;
-      text-shadow: 0 1px 2px rgba(0,0,0,.6);
-    }
+    .subhint { margin-left: auto; color: #D1FAE5; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
   }
 
-  /* ================== ACCESSIBILITÀ ================== */
   @media (prefers-reduced-motion: reduce) {
     .stepbar .dots button { transition: none; }
   }
-
-  /* ================== SMALL DEVICES ================== */
   @media (max-width: 360px) {
     .intro h1 { font-size: 1.25rem; }
   }
