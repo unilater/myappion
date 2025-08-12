@@ -42,7 +42,7 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
 
   // File utente
   fileIndex: Record<number, UserFileSummary> = {};    // by user_file_id
-  chosenByType: Record<string, UserFileSummary> = {}; // il più recente per tipologia_id
+  chosenByType: Record<string, UserFileSummary> = {}; // più recente per tipologia_id
 
   // Wizard
   pageSize = 5;
@@ -110,10 +110,10 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
       this.currentStep = 0;
       this.qTitle = null; this.qDesc = null;
 
-      // flow semplice e deterministico
+      // flow deterministico
       await this.loadDomande(this.questionarioId);
-      await this.loadExistingUploads(this.userId!);   // costruisce chosenByType/fileIndex
-      this.prefillUploadsFromExisting();              // collega automatico per tipologia
+      await this.loadExistingUploads(this.userId!); // fileIndex + chosenByType
+      this.prefillUploadsFromExisting();            // collega automatico per tipologia (se già presente)
       await this.loadUserData(this.userId!, this.questionarioId); // risposte salvate vincono
     });
   }
@@ -360,40 +360,59 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
       });
   }
 
+  // ===== Delete / Detach =====
   async clearChosen(qId:number, opt:UploadOpt){
     if (this.isComplete) return;
-    const tipologiaId = Number(opt.id);
-    if (!Number.isFinite(tipologiaId) || tipologiaId <= 0){
-      this.presentToast('Tipologia non valida', 'danger');
-      return;
-    }
 
+    const savedId = this.savedUserFileId(qId, opt.id); // per eventuale pulizia indici
     const overlay = await this.loadingCtrl.create({ message:'Rimuovo il file…', spinner:'crescent' });
     await overlay.present();
 
-    try{
-      await firstValueFrom(
-        this.dataService.deleteUploadPremium(this.userId!, this.questionarioId!, tipologiaId, String(qId))
+    try {
+      const res:any = await firstValueFrom(
+        this.dataService.deleteUploadPremium(this.userId!, this.questionarioId!, opt.id, String(qId))
           .pipe(finalize(()=>overlay.dismiss()))
       );
+
+      if (!res?.success) {
+        await this.presentToast(res?.message || 'Impossibile rimuovere il file', 'danger');
+        return;
+      }
+
+      // Pulizia UI locale
+      const qKey = String(qId), oKey = String(opt.id);
+      if (this.uploadsQueue[qKey]?.[oKey]) {
+        delete this.uploadsQueue[qKey][oKey];
+        if (Object.keys(this.uploadsQueue[qKey]).length===0) delete this.uploadsQueue[qKey];
+      }
+      if (this.uploadsVisuals[qKey]?.[oKey]) delete this.uploadsVisuals[qKey][oKey];
+      this.setUserFileIdInForm(qId, opt.id, null, false);
+
+      // Se il backend ha eliminato il file (orfano), puliamo gli indici
+      const deletedFiles = Number(res?.data?.user_files_deleted ?? 0);
+      if (deletedFiles > 0 && savedId) {
+        delete this.fileIndex[savedId];
+        const tipKey = String(opt.id);
+        const chosen = this.chosenByType[tipKey];
+        if (chosen && chosen.user_file_id === savedId) {
+          delete this.chosenByType[tipKey];
+        }
+      }
+
+      // autosave silenzioso
+      this.dataService.postQuestionarioPremium({
+        user_id:this.userId!, questionario_id:this.questionarioId!, questionario:this.questionarioForm.value
+      }).pipe(catchError(()=>of(null))).subscribe();
+
+      // Messaggio coerente con esito
+      const links = Number(res?.data?.links_deleted ?? 0);
+      if (deletedFiles > 0)      await this.presentToast('File eliminato.', 'success');
+      else if (links > 0)        await this.presentToast('Collegamento rimosso.', 'success');
+      else                       await this.presentToast('Nessuna modifica effettuata.', 'warning');
+
     } catch {
-      // anche se la delete fallisce, pulisco localmente per non bloccare l’utente
+      await this.presentToast('Errore di rete durante la rimozione', 'danger');
     }
-
-    const qKey = String(qId), oKey = String(opt.id);
-    if (this.uploadsQueue[qKey]?.[oKey]) {
-      delete this.uploadsQueue[qKey][oKey];
-      if (Object.keys(this.uploadsQueue[qKey]).length===0) delete this.uploadsQueue[qKey];
-    }
-    if (this.uploadsVisuals[qKey]?.[oKey]) delete this.uploadsVisuals[qKey][oKey];
-    this.setUserFileIdInForm(qId, opt.id, null, false);
-
-    // autosave
-    this.dataService.postQuestionarioPremium({
-      user_id:this.userId!, questionario_id:this.questionarioId!, questionario:this.questionarioForm.value
-    }).pipe(catchError(()=>of(null))).subscribe();
-
-    await this.presentToast('File rimosso dal questionario.', 'success');
   }
 
   // ===== Submit =====
