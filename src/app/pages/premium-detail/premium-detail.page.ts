@@ -135,7 +135,9 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
   /** Ritorna il nome file salvato nel FormControl (server-side) */
   savedUploadName(qId: number, optId: number): string | null {
     const val = this.questionarioForm.get(String(qId))?.value;
-    return val && typeof val === 'object' && val[optId] ? String(val[optId]) : null;
+    // supporta sia chiave number che string
+    const key = (val && (val[optId] ?? val[String(optId)]));
+    return key ? String(key) : null;
   }
 
   /** Autosave con debounce su tutte le modifiche del form */
@@ -309,29 +311,71 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
     });
   }
 
-  /** Rimuove selezione/salvataggio del file da UI + form + autosave */
-  clearChosen(qId: number, opt: UploadOpt) {
+  /** helper: rimuove il valore dal form e fa autosave "leggero" */
+  private removeFileFromForm(qId: number, optId: number) {
     const qKey = String(qId);
-    const oKey = String(opt.id);
-
-    if (this.uploads[qKey] && this.uploads[qKey][oKey]) {
-      delete this.uploads[qKey][oKey];
-      if (Object.keys(this.uploads[qKey]).length === 0) delete this.uploads[qKey];
-    }
-
+    const oKey = String(optId);
     const ctrl = this.questionarioForm.controls[qKey];
-    if (ctrl) {
-      const v = { ...(ctrl.value || {}) };
-      delete v[oKey];
-      ctrl.setValue(Object.keys(v).length ? v : null, { emitEvent: false });
+    if (!ctrl) return;
 
-      // autosave leggero
-      this.dataService.postQuestionarioPremium({
-        user_id: this.userId!,
-        questionario_id: this.questionarioId!,
-        questionario: this.questionarioForm.value
-      }).pipe(catchError(() => of(null))).subscribe();
+    const v = { ...(ctrl.value || {}) };
+    delete v[oKey];
+    ctrl.setValue(Object.keys(v).length ? v : null, { emitEvent: false });
+
+    this.dataService.postQuestionarioPremium({
+      user_id: this.userId!,
+      questionario_id: this.questionarioId!,
+      questionario: this.questionarioForm.value
+    }).pipe(catchError(() => of(null))).subscribe();
+  }
+
+  /** Rimuove selezione/salvataggio del file da UI + server + form */
+  async clearChosen(qId: number, opt: UploadOpt) {
+    if (this.isComplete) return;
+
+    const saved = this.savedUploadName(qId, opt.id); // path salvato (es. premium/user-.../file.pdf)
+
+    // 1) Se è solo in coda locale (non ancora caricato), pulisco stato + form e basta
+    if (!saved && this.uploads[String(qId)]?.[String(opt.id)]?.file) {
+      delete this.uploads[String(qId)][String(opt.id)];
+      if (Object.keys(this.uploads[String(qId)]).length === 0) delete this.uploads[String(qId)];
+      this.removeFileFromForm(qId, opt.id);
+      await this.presentToast('File rimosso.', 'success');
+      return;
     }
+
+    // 2) Se era già caricato: chiamo endpoint di delete (B2 + DB) e poi pulisco il form
+    if (saved) {
+      const overlay = await this.loadingCtrl.create({ message: 'Elimino file…', spinner: 'crescent' });
+      await overlay.present();
+
+      try {
+        const res: any = await firstValueFrom(
+          this.dataService.deleteUploadPremium(this.userId!, this.questionarioId!, opt.id, String(qId))
+            .pipe(finalize(() => overlay.dismiss()))
+        );
+
+        if (res?.success) {
+          // pulizia locale
+          if (this.uploads[String(qId)]?.[String(opt.id)]) {
+            delete this.uploads[String(qId)][String(opt.id)];
+            if (Object.keys(this.uploads[String(qId)]).length === 0) delete this.uploads[String(qId)];
+          }
+          this.removeFileFromForm(qId, opt.id);
+          await this.presentToast('File eliminato.', 'success');
+        } else {
+          await this.presentToast(res?.message || 'Impossibile eliminare il file', 'danger');
+        }
+      } catch {
+        await this.presentToast('Errore di rete durante l’eliminazione', 'danger');
+      }
+
+      return;
+    }
+
+    // 3) Fallback: nessun saved e nessuna coda → solo pulizia form (idempotente)
+    this.removeFileFromForm(qId, opt.id);
+    await this.presentToast('File rimosso.', 'success');
   }
 
   // ======= Submit =======

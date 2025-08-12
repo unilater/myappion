@@ -149,10 +149,23 @@ export class DataService {
     form.append('file', file, file.name);
 
     return this.http.post<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string }>>(
-      `${this.apiBaseUrl}/upload_premium.php?${this.ts()}`,
+      `${this.apiBaseUrl}/upload_premium_b2.php?${this.ts()}`,
       form
     );
   }
+  
+  deleteUploadPremium(
+  userId: number,
+  questionarioId: number,
+  tipologiaId: number,
+  questionId?: string
+) {
+  const qid = questionId ? `&question_id=${encodeURIComponent(questionId)}` : '';
+  return this.http.get<ApiResponse>(
+    `${this.apiBaseUrl}/delete_premium_file.php?user_id=${userId}&questionario_id=${questionarioId}&tipologia_id=${tipologiaId}${qid}&${this.ts()}`
+  );
+}
+
 
   // =======================
   // Servizi AI (legacy standard)
