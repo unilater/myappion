@@ -1,8 +1,11 @@
 <ion-header collapse="fade" [translucent]="true" class="app-header">
   <ion-toolbar color="dark">
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/home" text="Indietro" color="secondary" icon="chevron-back"></ion-back-button>
+    </ion-buttons>
     <ion-title color="light">Questionari Premium</ion-title>
     <ion-buttons slot="primary">
-      <ion-button color="secondary" (click)="load()" [attr.aria-label]="'Aggiorna'">
+      <ion-button color="secondary" (click)="load()" aria-label="Aggiorna">
         <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
       </ion-button>
     </ion-buttons>
@@ -21,68 +24,114 @@
   </ion-refresher>
 
   <div class="ion-padding">
-    <!-- Skeleton -->
     <ng-container *ngIf="loading">
-      <div *ngFor="let s of [1,2,3]" class="sk-card"></div>
+      <ion-card *ngFor="let s of [1,2,3]" class="sk-card sk-ai">
+        <ion-card-header><ion-skeleton-text animated class="sk-line sk-title"></ion-skeleton-text></ion-card-header>
+        <ion-card-content>
+          <ion-skeleton-text animated class="sk-line sk-sub"></ion-skeleton-text>
+          <div class="spacer-8"></div>
+          <ion-skeleton-text animated class="sk-bar"></ion-skeleton-text>
+        </ion-card-content>
+      </ion-card>
     </ng-container>
 
-    <!-- Lista -->
-    <ng-container *ngIf="!loading && items.length; else vuoto">
-      <div class="q-card" *ngFor="let q of items; trackBy: trackById">
-        <!-- Header (apre il dettaglio) -->
-        <div class="q-header" (click)="apri(q.id)" [attr.aria-label]="'Apri ' + q.titolo">
-          <h2 class="q-title">{{ q.titolo }}</h2>
-          <p class="q-desc" *ngIf="q.descrizione">{{ q.descrizione }}</p>
-          <p class="q-meta" *ngIf="q.num_domande != null">Domande: {{ q.num_domande }}</p>
-        </div>
+    <ng-container *ngIf="!loading && items?.length; else vuoto">
+      <ion-item lines="none">
+        <ion-label><strong>Elenco dei servizi</strong></ion-label>
+        <ion-badge slot="end" color="medium">{{ items.length }}</ion-badge>
+      </ion-item>
 
-        <!-- Azioni -->
-        <div class="q-actions">
-          <ion-chip [color]="q.completed ? 'success' : (q.checking ? 'medium' : 'warning')">
-            <ion-icon name="information-circle-outline"></ion-icon>
+      <ion-accordion-group expand="inset" [multiple]="true" [(value)]="openedIds" class="q-accordion-group">
+        <ion-accordion *ngFor="let q of items; trackBy: trackById" [value]="q.id" class="q-accordion">
+
+          <ion-item slot="header" lines="full" class="section-header">
             <ion-label>
-              <ng-container *ngIf="q.checking">Verifica…</ng-container>
-              <ng-container *ngIf="!q.checking && q.completed">Completato</ng-container>
-              <ng-container *ngIf="!q.checking && !q.completed">Incompleto</ng-container>
+              <h2 class="q-title">{{ q.titolo }}</h2>
+              <p class="q-desc" *ngIf="q.descrizione">{{ q.descrizione }}</p>
+              <p class="q-meta" *ngIf="q.num_domande != null">Domande: {{ q.num_domande }}</p>
+              <div class="q-status-row" *ngIf="getStatus(q.id) as st">
+                <ion-chip [color]="getOverallColor(st)" class="dense">
+                  <ion-icon name="pulse-outline"></ion-icon>
+                  <ion-label>{{ getOverallLabel(st) }}</ion-label>
+                </ion-chip>
+                <span class="q-progress-text" *ngIf="st.total">{{ (st.done / st.total * 100) | number:'1.0-0' }}%</span>
+              </div>
             </ion-label>
-          </ion-chip>
+            <ion-icon slot="end" name="chevron-down" class="accordion-caret" aria-hidden="true"></ion-icon>
+          </ion-item>
 
-          <!-- Completa / Rivedi -->
-          <ion-button
-            fill="outline"
-            size="small"
-            (click)="apri(q.id)"
-            [disabled]="q.checking"
-            [attr.aria-label]="q.completed ? 'Rivedi questionario' : 'Completa questionario'">
-            {{ q.completed ? 'Rivedi questionario' : 'Completa questionario' }}
-          </ion-button>
+          <div slot="content" class="q-content">
+            <!-- AZIONI: mostrate solo se NON c'è un sommario -->
+            <div class="content-actions" *ngIf="!hasSummary(q.id); else alreadyDone">
+              <ion-chip [color]="q.completed ? 'success' : (q.checking ? 'medium' : 'warning')">
+                <ion-icon name="information-circle-outline"></ion-icon>
+                <ion-label>
+                  <ng-container *ngIf="q.checking">Verifica…</ng-container>
+                  <ng-container *ngIf="!q.checking && q.completed">Completato</ng-container>
+                  <ng-container *ngIf="!q.checking && !q.completed">Incompleto</ng-container>
+                </ion-label>
+              </ion-chip>
 
-          <!-- Inizializza -->
-          <ion-button
-            color="tertiary"
-            size="small"
-            (click)="inizializza(q)"
-            [disabled]="q.checking || !q.completed || initLoading[q.id]"
-            [attr.aria-disabled]="(q.checking || !q.completed || initLoading[q.id]) ? 'true' : null"
-            [attr.aria-label]="'Inizializza processo AI per ' + q.titolo">
-            <ion-spinner *ngIf="initLoading[q.id]" name="crescent"></ion-spinner>
-            <ng-container *ngIf="!initLoading[q.id]">Inizializza</ng-container>
-          </ion-button>
+              <ion-button fill="outline" size="small" (click)="apri(q.id)" [disabled]="q.checking">
+                {{ q.completed ? 'Rivedi questionario' : 'Completa questionario' }}
+              </ion-button>
 
-          <!-- Freccia apri -->
-          <ion-button fill="clear" (click)="apri(q.id)" [attr.aria-label]="'Apri ' + q.titolo">
-            <ion-icon slot="icon-only" name="chevron-forward"></ion-icon>
-          </ion-button>
-        </div>
-      </div>
+              <ion-button *ngIf="!hasAnyActiveQueue()" color="tertiary" size="small"
+                          (click)="inizializza(q)"
+                          [disabled]="q.checking || !q.completed || initLoading[q.id]">
+                <ion-spinner *ngIf="initLoading[q.id]" name="crescent"></ion-spinner>
+                <ng-container *ngIf="!initLoading[q.id]">Inizializza</ng-container>
+              </ion-button>
+
+              <ion-note *ngIf="hasAnyActiveQueue()" color="medium">
+                Elaborazioni in corso: attendi il completamento per inizializzare.
+              </ion-note>
+            </div>
+
+            <ng-template #alreadyDone>
+              <div class="content-actions">
+                <ion-chip color="success">
+                  <ion-icon name="checkmark-circle-outline"></ion-icon>
+                  <ion-label>Risultato pronto</ion-label>
+                </ion-chip>
+              </div>
+            </ng-template>
+
+            <ng-container *ngIf="getStatus(q.id) as st; else noStato">
+              <ion-progress-bar [value]="st.total ? (st.done / st.total) : 0" [color]="getOverallColor(st)"></ion-progress-bar>
+              <div class="q-stats">
+                <ion-chip class="pill" color="tertiary">Queued: {{ st.queued }}</ion-chip>
+                <ion-chip class="pill" color="warning">Running: {{ st.running }}</ion-chip>
+                <ion-chip class="pill" color="success">Done: {{ st.done }}</ion-chip>
+                <ion-chip class="pill" color="danger">Error: {{ st.error }}</ion-chip>
+                <ion-chip class="pill" color="medium">Tot: {{ st.total }}</ion-chip>
+              </div>
+            </ng-container>
+            <ng-template #noStato><ion-note>Nessun job attivo.</ion-note></ng-template>
+
+            <!-- SOMMARIO (render HTML) -->
+            <div *ngIf="detailsMap?.get(q.id) as det" class="q-details">
+              <h3>Sommario</h3>
+              <ion-item-divider class="inset"></ion-item-divider>
+              <div *ngFor="let k of objectKeys(det)" class="detail-block">
+                <div class="ai-html" [innerHTML]="det[k]"></div>
+                <ion-item-divider class="hairline"></ion-item-divider>
+              </div>
+            </div>
+          </div>
+        </ion-accordion>
+      </ion-accordion-group>
     </ng-container>
 
-    <!-- Vuoto -->
     <ng-template #vuoto>
-      <div class="empty">
-        <ion-icon name="document-text-outline"></ion-icon>
+      <div class="empty ion-text-center ion-margin-top">
+        <ion-icon name="document-text-outline" aria-hidden="true"></ion-icon>
         <h2>Nessun questionario</h2>
-        <p>Riprovare più tardi.</p>
+        <p>Quando saranno disponibili, li vedrai qui.</p>
+        <ion-button (click)="load()" fill="solid">
+          <ion-icon name="refresh-outline" slot="start"></ion-icon>
+          Aggiorna
+        </ion-button>
       </div>
     </ng-template>
   </div>

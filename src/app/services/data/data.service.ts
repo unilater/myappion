@@ -224,4 +224,27 @@ export class DataService {
       `${this.apiBaseUrl}/openai/inizializza_premium.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
     );
   }
+
+  // =======================
+  // Stato & Dettagli AI PREMIUM
+  // =======================
+  getAiStatusPremium(userId: number, questionarioId: number): Observable<ApiResponse<AiStatus>> {
+    return this.http.get<ApiResponse<AiStatus>>(
+      `${this.apiBaseUrl}/openai/status_premium.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
+    );
+  }
+
+  // << MODIFICATO: supporta scope (es. 'summary') >>
+  getAiDetailsPremium(
+    userId: number,
+    questionarioId: number,
+    scope?: 'summary' | 'file' | 'qa' | 'other'
+  ): Observable<AiDetailsResponse> {
+    const sc = scope ? `&scope=${encodeURIComponent(scope)}` : '';
+    return this.http.get<AiDetailsResponse>(
+      `${this.apiBaseUrl}/openai/get_tutele_premium.php?user_id=${userId}&questionario_id=${questionarioId}${sc}&${this.ts()}`
+    );
+  }
 }
+
+
