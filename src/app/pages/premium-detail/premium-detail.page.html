@@ -11,9 +11,7 @@
   <!-- Intro dinamica -->
   <section class="intro ion-padding" aria-labelledby="intro-title">
     <h1 id="intro-title">{{ qTitle || 'Questionario Premium' }}</h1>
-    <p class="lead-intro" *ngIf="qDesc; else defaultDesc">
-      {{ qDesc }}
-    </p>
+    <p class="lead-intro" *ngIf="qDesc; else defaultDesc">{{ qDesc }}</p>
     <ng-template #defaultDesc>
       <p class="lead-intro">
         Compila le domande. Dopo l’invio, vai in <strong>Diritti (AI)</strong>:
@@ -70,6 +68,7 @@
 
       <!-- Campi dello step corrente -->
       <ng-container *ngFor="let q of questions | slice:(currentStep * pageSize):(currentStep + 1) * pageSize">
+
         <!-- Number -->
         <ion-item *ngIf="(q.tipo || '').toLowerCase() === 'number'" class="q-item">
           <ion-label position="floating">{{ q.testo_domanda }}</ion-label>
@@ -96,11 +95,8 @@
           </ion-select>
         </ion-item>
 
-        <!-- UPLOAD (user-centric) -->
-        <div
-          *ngIf="(q.tipo || '').toLowerCase() === 'upload' || (!q.tipo && q.opzioni?.length)"
-          class="q-item ion-padding-vertical upload-block"
-        >
+        <!-- UPLOAD (solo se q.tipo === 'upload') -->
+        <div *ngIf="(q.tipo || '').toLowerCase() === 'upload'" class="q-item ion-padding-vertical upload-block">
           <h3 class="upload-title">{{ q.testo_domanda }}</h3>
 
           <ion-list lines="none" class="upload-list">
@@ -108,13 +104,13 @@
               <ion-label class="upload-label">
                 <div class="u-name">{{ opt?.nome }}</div>
 
-                <!-- appena selezionato (in coda) -->
+                <!-- in coda -->
                 <div class="u-file" *ngIf="uploadsQueue[q.id]?.[opt.id]?.file as f">
                   <ion-badge color="tertiary" class="u-badge">In coda</ion-badge>
                   <span class="u-filename">{{ f.name }}</span>
                 </div>
 
-                <!-- già collegato (da server/user-centric) -->
+                <!-- collegato (anche auto-prefill) -->
                 <div class="u-file" *ngIf="!uploadsQueue[q.id]?.[opt.id]?.file && displayFilename(q.id, opt.id) as friendlyName">
                   <ion-badge color="success" class="u-badge">Collegato</ion-badge>
                   <span class="u-filename">
@@ -148,21 +144,7 @@
                   Scegli
                 </ion-button>
 
-                <!-- Usa già caricato (lista per tipologia) -->
-                <ion-select
-                  placeholder="Usa file già caricato"
-                  interface="popover"
-                  *ngIf="existingByType[opt.id]?.length"
-                  (ionChange)="useExisting(q.id, opt, $event.detail.value)"
-                  [disabled]="isComplete"
-                  class="reuse-select"
-                >
-                  <ion-select-option *ngFor="let f of existingByType[opt.id]" [value]="f">
-                    {{ f.filename }}
-                  </ion-select-option>
-                </ion-select>
-
-                <!-- Rimuovi dal questionario (no delete fisico per ora) -->
+                <!-- Rimuovi dal questionario (solo locale + autosave, niente delete fisico) -->
                 <ion-button color="medium"
                             fill="clear"
                             *ngIf="uploadsQueue[q.id]?.[opt.id]?.file || displayFilename(q.id, opt.id)"
@@ -176,9 +158,8 @@
           </ion-list>
 
           <ion-note class="hint ion-padding-top">
-            Carica i documenti richiesti (es. “CU”, “Dichiarazione Redditi 2025”, “IMU”).
-            <strong>I file vengono inviati subito dopo la selezione.</strong><br />
-            Se hai già caricato un documento uguale in un altro questionario, scegli <em>“Usa file già caricato”</em>.
+            Se hai già caricato un documento con questa tipologia, lo colleghiamo automaticamente.
+            <strong>I file nuovi vengono inviati subito dopo la selezione.</strong>
           </ion-note>
         </div>
       </ng-container>
@@ -194,8 +175,8 @@
       <div class="spacer"></div>
 
       <ion-button *ngIf="currentStep < totalSteps - 1"
-                  (click)="nextStep()
-                  " [disabled]="!isStepValid() || isComplete">
+                  (click)="nextStep()"
+                  [disabled]="!isStepValid() || isComplete">
         Avanti
         <ion-icon slot="end" name="chevron-forward-outline"></ion-icon>
       </ion-button>
