@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -17,9 +18,12 @@ export interface AiStatus {
   percent?: number;
 }
 
+/** Esteso: opzionale result_id anche dentro meta */
 export interface AiDetailsResponse {
   success: boolean;
   data: Record<string, string>;
+  result_id?: number;
+  meta?: { result_id?: number };
 }
 
 export interface PremiumQuestionarioListItem {
@@ -88,7 +92,7 @@ export class DataService {
   }
 
   // =======================
-  // Domande questionario (standard)
+  // Domande questionario
   // =======================
   getDomandeQuestionario(questionarioId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(
@@ -96,9 +100,6 @@ export class DataService {
     );
   }
 
-  // =======================
-  // Domande questionario PREMIUM
-  // =======================
   getDomandeQuestionarioPremium(questionarioId: number): Observable<ApiResponse<any[]>> {
     return this.http.get<ApiResponse<any[]>>(
       `${this.apiBaseUrl}/get_domande_premium.php?questionario_id=${questionarioId}&${this.ts()}`
@@ -106,7 +107,7 @@ export class DataService {
   }
 
   // =======================
-  // Dati questionario utente (standard)
+  // Dati questionario utente
   // =======================
   getQuestionario(userId: number, questionarioId: number): Observable<ApiResponse<Record<string, any>>> {
     return this.http.get<ApiResponse<Record<string, any>>>(
@@ -118,9 +119,6 @@ export class DataService {
     return this.http.post<ApiResponse>(`${this.apiBaseUrl}/questionario.php`, data);
   }
 
-  // =======================
-  // Dati questionario utente PREMIUM
-  // =======================
   getQuestionarioPremium(userId: number, questionarioId: number): Observable<ApiResponse<Record<string, any>>> {
     return this.http.get<ApiResponse<Record<string, any>>>(
       `${this.apiBaseUrl}/questionario_premium.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
@@ -132,7 +130,7 @@ export class DataService {
   }
 
   // =======================
-  // UPLOAD PREMIUM (user-centric)
+  // Upload premium
   // =======================
   uploadFilePremium(
     userId: number,
@@ -154,14 +152,12 @@ export class DataService {
     );
   }
 
-  /** NUOVO: lista file dell’utente raggruppati per tipologia (per re-use) */
   getUserFilesByTipologia(userId: number) {
     return this.http.get<ApiResponse<Array<{ user_file_id: number; tipologia_id: number | null; filename: string; url?: string }>>>(
       `${this.apiBaseUrl}/user_files_by_tipologia.php?user_id=${userId}&${this.ts()}`
     );
   }
 
-  /** NUOVO: collega un file già caricato al questionario corrente (senza ri-caricare) */
   attachUserFileToQuestionario(
     userId: number,
     questionarioId: number,
@@ -174,12 +170,6 @@ export class DataService {
     );
   }
 
-  /** (IN ATTESA) detach logico — lo implementeremo quando farai l’API */
-  // detachUploadPremium(userId: number, questionarioId: number, userFileId: number, tipologiaId: number) { ... }
-
-  // =======================
-  // Delete (legacy – lasciamo com’è finché non spostiamo tutto su detach)
-  // =======================
   deleteUploadPremium(
     userId: number,
     questionarioId: number,
@@ -193,7 +183,7 @@ export class DataService {
   }
 
   // =======================
-  // Servizi AI (legacy standard)
+  // Servizi AI (standard)
   // =======================
   inizializzaAI(userId: number, questionarioId: number): Observable<ApiResponse<{ textResponse: string; jobs: number }>> {
     return this.http.get<ApiResponse<{ textResponse: string; jobs: number }>>(
@@ -214,7 +204,7 @@ export class DataService {
   }
 
   // =======================
-  // Servizi AI PREMIUM (enqueue jobs)
+  // Servizi AI PREMIUM
   // =======================
   inizializzaPremium(
     userId: number,
@@ -225,16 +215,13 @@ export class DataService {
     );
   }
 
-  // =======================
-  // Stato & Dettagli AI PREMIUM
-  // =======================
   getAiStatusPremium(userId: number, questionarioId: number): Observable<ApiResponse<AiStatus>> {
     return this.http.get<ApiResponse<AiStatus>>(
       `${this.apiBaseUrl}/openai/status_premium.php?user_id=${userId}&questionario_id=${questionarioId}&${this.ts()}`
     );
   }
 
-  // << MODIFICATO: supporta scope (es. 'summary') >>
+  /** Supporta scope (es. 'summary') e restituisce opzionalmente result_id */
   getAiDetailsPremium(
     userId: number,
     questionarioId: number,
@@ -245,6 +232,47 @@ export class DataService {
       `${this.apiBaseUrl}/openai/get_tutele_premium.php?user_id=${userId}&questionario_id=${questionarioId}${sc}&${this.ts()}`
     );
   }
+
+  /** Fallback per recuperare l'ultimo result_id del summary */
+  getLatestPremiumResultId(
+    userId: number,
+    questionarioId: number,
+    scope: 'summary' = 'summary'
+  ): Observable<ApiResponse<{ result_id: number }>> {
+    return this.http.get<ApiResponse<{ result_id: number }>>(
+      `${this.apiBaseUrl}/openai/get_latest_result_premium.php?user_id=${userId}&questionario_id=${questionarioId}&scope=${encodeURIComponent(scope)}&${this.ts()}`
+    );
+  }
+
+  // =======================
+  // Chat via backend proxy (AnythingLLM nascosto lato server)
+  // =======================
+  sendChatMessageViaBackend(args: {
+    user_id: number;
+    questionario_id: number;
+    message: string;
+    result_id?: number;
+    thread_slug?: string | null;
+  }): Observable<{ reply: string; thread_slug?: string | null; result_id?: number | null }> {
+    const form = new FormData();
+    form.append('user_id', String(args.user_id));
+    form.append('questionario_id', String(args.questionario_id));
+    form.append('message', args.message);
+    if (args.result_id != null) form.append('result_id', String(args.result_id));
+    if (args.thread_slug) form.append('thread_slug', args.thread_slug);
+
+    return this.http.post<ApiResponse<{ reply: string; thread_slug?: string; result_id?: number }>>(
+      `${this.apiBaseUrl}/anyllm/chat_send.php?${this.ts()}`,
+      form
+    ).pipe(
+      map(res => {
+        if (!res?.success) throw new Error(res?.message || 'Errore chat');
+        return {
+          reply: res.data?.reply || '',
+          thread_slug: res.data?.thread_slug || null,
+          result_id: res.data?.result_id ?? null
+        };
+      })
+    );
+  }
 }
-
-

@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { LoadingController, ToastController } from '@ionic/angular';
 import { Storage } from '@ionic/storage-angular';
 import { DataService, AiStatus } from 'src/app/services/data/data.service';
-import { forkJoin, of, interval, Subscription } from 'rxjs';
+import { forkJoin, of, interval, Subscription, firstValueFrom } from 'rxjs';
 import { catchError, finalize, map, take } from 'rxjs/operators';
 
 type PremiumQuestionarioItem = {
@@ -13,7 +13,6 @@ type PremiumQuestionarioItem = {
   num_domande?: number | null;
   num_prompts?: number | null;
 };
-
 type PremiumItemView = PremiumQuestionarioItem & {
   completed?: boolean;
   checking?: boolean;
@@ -33,12 +32,20 @@ export class PremiumPage implements OnInit, OnDestroy {
   loading = false;
   userId: number | null = null;
 
+  // spinner per singolo bottone “Inizializza”
   initLoading: Record<number, boolean> = {};
 
+  // stato & dettagli AI per questionario
   statusMap = new Map<number, Status>();
-  detailsMap = new Map<number, Record<string, string>>();
+  detailsMap = new Map<number, Record<string, string>>(); // (scope=summary => 1 chiave)
 
+  // cache resultId per ogni questionario (summary)
+  resultIdMap = new Map<number, number>();
+
+  // accordion aperti
   openedIds: number[] = [];
+
+  // polling
   private pollingSubs = new Map<number, Subscription>();
 
   constructor(
@@ -81,6 +88,7 @@ export class PremiumPage implements OnInit, OnDestroy {
 
           await this.checkAllCompletions();
 
+          // prefetch stato + dettagli (summary)
           this.items.forEach(it => { this.refreshStatus(it.id); this.refreshDetails(it.id); });
           this.reconcileMapsWithList();
         } else {
@@ -100,9 +108,11 @@ export class PremiumPage implements OnInit, OnDestroy {
     Array.from(this.pollingSubs.keys()).forEach(id => { if (!ids.has(id)) this.stopPolling(id); });
     Array.from(this.statusMap.keys()).forEach(id => { if (!ids.has(id)) this.statusMap.delete(id); });
     Array.from(this.detailsMap.keys()).forEach(id => { if (!ids.has(id)) this.detailsMap.delete(id); });
+    Array.from(this.resultIdMap.keys()).forEach(id => { if (!ids.has(id)) this.resultIdMap.delete(id); });
     this.openedIds = this.openedIds.filter(id => ids.has(id));
   }
 
+  // === logica “completato/incompleto” ===
   private isUpload(q: any): boolean {
     const t = (q?.tipo || '').toString().trim().toLowerCase();
     const looksLikeUploadOptions =
@@ -131,10 +141,12 @@ export class PremiumPage implements OnInit, OnDestroy {
         map(([domandeRes, ansRes]) => {
           const domande = (domandeRes?.success ? domandeRes.data : []) || [];
           const answers: Record<string, any> = (ansRes?.success ? ansRes.data : {}) || {};
+
           for (const q of domande) {
             if (!q?.obbligatoria) continue;
             const key = String(q.id);
             const val = answers[key];
+
             if (this.isUpload(q)) {
               const opts = Array.isArray(q.opzioni) ? q.opzioni : [];
               if (!opts.length) {
@@ -192,7 +204,7 @@ export class PremiumPage implements OnInit, OnDestroy {
     });
   }
 
-  // ======= Stato & Dettagli (premium) =======
+  // ======= Polling =======
   private startPolling(questionarioId: number) {
     this.stopPolling(questionarioId);
     this.refreshStatus(questionarioId);
@@ -222,7 +234,7 @@ export class PremiumPage implements OnInit, OnDestroy {
     });
   }
 
-  // decode entities and normalize accidental <pre> wrappers from API
+  // normalizzazione HTML (decode entities + rimuovi <pre>)
   private decodeHtml(v: string): string {
     const ta = document.createElement('textarea');
     ta.innerHTML = v ?? '';
@@ -230,7 +242,6 @@ export class PremiumPage implements OnInit, OnDestroy {
   }
   private normalizeApiHtml(html: string): string {
     const decoded = this.decodeHtml(html);
-    // se l'API ha incapsulato in <pre>, sostituisci con un div wrappabile
     return decoded
       .replace(/<pre\b[^>]*>/gi, '<div class="pre-wrap">')
       .replace(/<\/pre>/gi, '</div>');
@@ -244,6 +255,10 @@ export class PremiumPage implements OnInit, OnDestroy {
           const normalized: Record<string, string> = {};
           Object.keys(res.data).forEach(k => normalized[k] = this.normalizeApiHtml(res.data[k]));
           this.detailsMap.set(questionarioId, normalized);
+
+          // cattura result_id quando presente
+          const rid = (res as any)?.result_id ?? (res as any)?.meta?.result_id;
+          if (rid) this.resultIdMap.set(questionarioId, Number(rid));
         }
       }
     });
@@ -284,6 +299,31 @@ export class PremiumPage implements OnInit, OnDestroy {
     const det = this.detailsMap.get(id);
     if (!det) return false;
     return Object.values(det).some(v => (v ?? '').toString().trim().length > 0);
+  }
+
+  // ======= Apri chat vincolata al risultato (summary) =======
+  async openChat(qid: number) {
+    // 1) prova da cache
+    let rid = this.resultIdMap.get(qid);
+
+    // 2) fallback sul backend
+    if (!rid && this.userId) {
+      try {
+        const latest = await firstValueFrom(
+          this.data.getLatestPremiumResultId(this.userId, qid, 'summary')
+        );
+        rid = latest?.data?.result_id ? Number(latest.data.result_id) : undefined;
+        if (rid) this.resultIdMap.set(qid, rid);
+      } catch { /* ignore */ }
+    }
+
+    if (!rid) {
+      this.presentToast('Risultato non pronto: nessun summary trovato.', 'warning');
+      return;
+    }
+
+    // Naviga: /chat/:resultId?questionario_id=...
+    this.router.navigate(['/chat', rid], { queryParams: { questionario_id: qid } });
   }
 
   private async presentToast(message: string, color: 'success' | 'danger' | 'warning') {

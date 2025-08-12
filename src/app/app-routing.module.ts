@@ -62,6 +62,12 @@ const routes: Routes = [
   loadChildren: () => import('./pages/premium-detail/premium-detail.module')
     .then(m => m.PremiumDetailPageModule)
 },
+
+{ path: 'chat/:resultId', loadChildren: () => import('./pages/public/chat/chat.module').then(m => m.ChatPageModule) 
+
+}
+
+ 
 ];
 @NgModule({
   imports: [

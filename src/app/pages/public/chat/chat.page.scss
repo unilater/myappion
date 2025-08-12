@@ -1,0 +1,127 @@
+:host {
+  ion-content { --background: linear-gradient(135deg, var(--ion-color-dark), var(--ion-color-primary)); }
+}
+
+.page-chat {
+  .context-pill {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 6px;
+    .dense { height: 26px; border-radius: 14px; font-weight: 700; }
+  }
+
+  .chat-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .messages {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 6px;
+  }
+
+  .msg {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    align-items: flex-end;
+    gap: 8px;
+
+    &.user {
+      grid-template-columns: 1fr 40px;
+      .bubble { justify-self: end; background: rgba(56,189,248,.18); border: 1px solid rgba(56,189,248,.35); color: #eaf7ff; }
+      .avatar { order: 2; justify-self: end; }
+    }
+
+    &.assistant {
+      .bubble { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); color: #eef3ff; }
+    }
+
+    &.system {
+      grid-template-columns: 1fr;
+      .bubble {
+        background: transparent;
+        border: 1px dashed rgba(255,255,255,.25);
+        color: #cfe0ff;
+        font-style: italic;
+      }
+      .avatar { display: none; }
+    }
+
+    .avatar {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      background: rgba(255,255,255,.07); border-radius: 50%;
+      ion-icon { font-size: 22px; color: #d9e6ff; opacity: .9; }
+    }
+
+    .bubble {
+      padding: 10px 12px;
+      border-radius: 14px;
+      backdrop-filter: saturate(120%) blur(2px);
+      max-width: 90%;
+    }
+
+    .msg-text {
+      white-space: pre-wrap; /* preserva a capo */
+      line-height: 1.45;
+      font-size: 15px;
+      letter-spacing: .2px;
+    }
+
+    &.typing .bubble {
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .dots {
+      display: inline-flex; gap: 4px;
+      span {
+        width: 6px; height: 6px; border-radius: 50%; background: #cfe0ff; opacity: .8;
+        animation: blink 1.2s infinite;
+        &:nth-child(2) { animation-delay: .2s; }
+        &:nth-child(3) { animation-delay: .4s; }
+      }
+    }
+  }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: .3; transform: translateY(0); }
+    40% { opacity: 1; transform: translateY(-2px); }
+  }
+
+  .empty {
+    display: grid; place-items: center; text-align: center; gap: 10px; margin-top: 24px;
+    ion-icon { font-size: 48px; color: var(--ion-color-light); opacity: .85; }
+    h3 { margin: 0; color: #fff; }
+    p { margin: 0; color: rgba(255,255,255,.85); }
+  }
+
+  .composer-spacer { height: 76px; }
+}
+
+.composer-footer {
+  --background: rgba(7,18,36,.68);
+  backdrop-filter: saturate(120%) blur(6px);
+  border-top: 1px solid rgba(255,255,255,.08);
+
+  .composer {
+    --background: transparent;
+  }
+
+  .composer-item {
+    --padding-start: 10px;
+    --inner-padding-end: 10px;
+    --background: transparent;
+    width: 100%;
+    align-items: center;
+    ion-textarea {
+      --background: rgba(255,255,255,.06);
+      --padding-top: 10px;
+      --padding-bottom: 10px;
+      --padding-start: 12px;
+      --padding-end: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      color: #eaf0ff;
+    }
+  }
+}
