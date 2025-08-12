@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 export interface ApiResponse<T = any> {
@@ -32,6 +32,34 @@ export interface PremiumQuestionarioListItem {
   descrizione?: string;
   num_domande?: number;
   num_prompts?: number;
+}
+
+/* ======== Tipi per la CHAT AnythingLLM ======== */
+export interface ChatServerData {
+  reply: string;
+  thread_slug: string | null;
+  first: 0 | 1;
+  sent_kind: 'first' | 'followup';
+  sent_message: string;        // primo giro: prompt+contesto+domanda; follow-up: solo messaggio
+  sent_len: number;
+  used_prompt: string | null;
+  used_context_len: number;
+  session_id: string;
+  msg_index: number;
+  input_echo?: {
+    message: string;
+    result_id: number;
+    thread_slug: string | null;
+    reset: 0 | 1;
+  };
+}
+
+export interface ChatSendArgs {
+  message: string;
+  result_id?: number;           // richiesto al primo invio della sessione
+  thread_slug?: string | null;  // per follow-up (in genere lo gestiamo internamente)
+  prompt?: string;              // opzionale: extra soft prompt
+  reset?: boolean;              // opzionale: forza nuovo thread (serve anche result_id)
 }
 
 @Injectable({ providedIn: 'root' })
@@ -234,7 +262,7 @@ export class DataService {
     );
   }
 
-  /** Fallback per recuperare l'ultimo result_id del summary */
+  /** Fallback per recuperare l'ultimo result_id del summary (serve per avviare la chat) */
   getLatestPremiumResultId(
     userId: number,
     questionarioId: number,
@@ -246,82 +274,90 @@ export class DataService {
   }
 
   // ======================================================================
-  // ANYTHINGLLM — CHAT (via backend PHP che nasconde API key e prompt)
+  // ANYTHINGLLM — CHAT (endpoint unico che prende il contesto da response_text di result_id)
   // ======================================================================
 
-  /**
-   * Apre (o riusa) una sessione di chat su AnythingLLM per il contesto corrente.
-   * Lato PHP (anyllm/chat_open.php):
-   *  - legge le impostazioni AnythingLLM da settings
-   *  - se esiste già un thread per (user_id, questionario_id, result_id) lo restituisce
-   *  - altrimenti crea un thread NUOVO inviando un "prompt di sistema" che
-   *    vincola l'agente a restare nel perimetro del summary/quiz/documenti.
-   *
-   * NB: chiama questo una volta quando entri nella pagina Chat (o quando cambi result_id).
-   */
-  openChatSessionViaBackend(args: {
-    user_id: number;
-    questionario_id: number;
-    result_id?: number; // summary specifico (facoltativo ma consigliato)
-  }): Observable<{ thread_slug: string; bootstrapped?: boolean; reused?: boolean }> {
-    const form = new FormData();
-    form.append('user_id', String(args.user_id));
-    form.append('questionario_id', String(args.questionario_id));
-    if (args.result_id != null) form.append('result_id', String(args.result_id));
+  /** Identificativo di sessione chat (rigenerato a ogni apertura schermata) */
+  private chatSessionId: string | null = null;
+  /** Thread corrente (impostato dopo il primo giro) */
+  private chatThreadSlug: string | null = null;
 
-    return this.http.post<ApiResponse<{ thread_slug: string; bootstrapped?: boolean; reused?: boolean }>>(
-      `${this.apiBaseUrl}/anyllm/chat_open.php`,
-      form
-    ).pipe(
-      map((res) => {
-        if (!res?.success || !res.data?.thread_slug) {
-          // il backend garantisce thread_slug se ok
-          throw new Error(res?.message || 'Impossibile aprire la sessione di chat');
-        }
-        return res.data;
-      })
-    );
+  /** Genera un UUID v4 semplice per la sessione di UI */
+  private newUuidv4(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 0xf) >> 0;
+      const v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  /** Da chiamare quando si apre/ricarica la schermata chat */
+  startChatSession(): void {
+    this.chatSessionId = this.newUuidv4();
+    this.chatThreadSlug = null;
+  }
+
+  /** Reset esplicito senza ricaricare la schermata (richiede result_id al prossimo invio) */
+  resetChatSession(): void {
+    if (!this.chatSessionId) this.chatSessionId = this.newUuidv4();
+    this.chatThreadSlug = null;
   }
 
   /**
-   * Invia un messaggio all'agente nel thread corrente.
-   * Lato PHP (anyllm/chat_send.php):
-   *  - risolve il thread da DB se non fornisci thread_slug (consigliato: lasciare al server)
-   *  - aggiunge metadata (user_id, questionario_id, result_id) per tracciabilità
-   *  - forwarda il messaggio ad AnythingLLM e normalizza la risposta { reply, thread_slug }
-   *
-   * NB: NON serve passare ogni volta prompt/contesto: è già “inchiodato”
-   *     nel thread al momento dell'open.
+   * Invia un messaggio alla chat.
+   * - Primo invio della sessione: NON passare thread_slug. Passa { message, result_id }.
+   *   Il backend userà users_ai_results_premium.response_text (ripulito HTML) come contesto e costruirà
+   *   il messaggio completo (prompt + contesto + domanda).
+   * - Invii successivi: passa solo { message } e il service manderà thread_slug salvato.
+   * - Se vuoi forzare un nuovo thread durante la stessa sessione, passa { reset: true, result_id }.
    */
-  sendChatMessageViaBackend(args: {
-    user_id: number;
-    questionario_id: number;
-    message: string;
-    result_id?: number;            // per sicurezza/telemetria lato server
-    thread_slug?: string | null;   // opzionale: se lo hai, passalo; altrimenti ci pensa il server
-  }): Observable<{ reply: string; thread_slug?: string | null; result_id?: number | null }> {
-    const form = new FormData();
-    form.append('user_id', String(args.user_id));
-    form.append('questionario_id', String(args.questionario_id));
-    form.append('message', args.message);
-    if (args.result_id != null) form.append('result_id', String(args.result_id));
-    if (args.thread_slug) form.append('thread_slug', args.thread_slug);
+  sendChatMessage(args: ChatSendArgs): Observable<ChatServerData> {
+    // Autostart session se mancante
+    if (!this.chatSessionId) this.startChatSession();
 
-    return this.http.post<ApiResponse<{ reply: string; thread_slug?: string; result_id?: number }>>(
-      `${this.apiBaseUrl}/anyllm/chat_send.php?${this.ts()}`, // cache-buster per sicurezza
-      form
-    ).pipe(
-      map((res) => {
-        if (!res?.success) {
-          throw new Error(res?.message || 'Errore chat');
-        }
-        // Normalizziamo il payload per il componente
-        return {
-          reply: res.data?.reply || '',
-          thread_slug: res.data?.thread_slug || null,
-          result_id: res.data?.result_id ?? null
-        };
-      })
-    );
+    const isFirst = !this.chatThreadSlug || !!args.reset;
+
+    // Validazioni minime lato client (per UX)
+    if (isFirst && (!args.result_id || args.result_id <= 0)) {
+      return throwError(() => new Error('result_id è obbligatorio al primo messaggio (o quando reset=true)'));
+    }
+
+    const payload: any = {
+      session_id: this.chatSessionId,
+      message: args.message
+    };
+    if (args.prompt) payload.prompt = args.prompt;
+    if (args.reset)  payload.reset  = true;
+
+    if (isFirst) {
+      // Primo giro: NON mandare thread_slug, serve result_id
+      payload.result_id = args.result_id;
+    } else {
+      // Follow-up: usa thread corrente (o quello passato esplicitamente)
+      payload.thread_slug = args.thread_slug ?? this.chatThreadSlug;
+    }
+
+    return this.http
+      .post<ApiResponse<ChatServerData>>(
+        `${this.apiBaseUrl}/anyllm/chat.php?${this.ts()}`,
+        payload
+      )
+      .pipe(
+        map((res) => {
+          if (!res?.success) {
+            throw new Error(res?.message || 'Errore chat');
+          }
+          const data = res.data as ChatServerData;
+
+          // Memorizza il thread la prima volta (o quando il backend lo restituisce)
+          if (data?.thread_slug) {
+            this.chatThreadSlug = data.thread_slug;
+          }
+
+          // Ritorna tutto (così puoi vedere sent_message per verificare prompt+contesto)
+          return data;
+        })
+      );
   }
 }
+
