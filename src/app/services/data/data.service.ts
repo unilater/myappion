@@ -36,11 +36,12 @@ export interface PremiumQuestionarioListItem {
 
 @Injectable({ providedIn: 'root' })
 export class DataService {
+  /** Base URL del backend PHP */
   private apiBaseUrl = 'https://pannellogaleazzi.appnativeitalia.com/api';
 
   constructor(private http: HttpClient) {}
 
-  // Cache-buster
+  /** Cache-buster semplice per GET */
   private ts() { return `_=${Date.now()}`; }
 
   // =======================
@@ -57,7 +58,7 @@ export class DataService {
   }
 
   // =======================
-  // Elenco questionari (standard)
+  // Elenco questionari
   // =======================
   getElencoQuestionari(): Observable<ApiResponse<Array<{ id: number; titolo: string; descrizione?: string; num_domande?: number }>>> {
     return this.http.get<ApiResponse<Array<{ id: number; titolo: string; descrizione?: string; num_domande?: number }>>>(
@@ -244,15 +245,60 @@ export class DataService {
     );
   }
 
-  // =======================
-  // Chat via backend proxy (AnythingLLM nascosto lato server)
-  // =======================
+  // ======================================================================
+  // ANYTHINGLLM — CHAT (via backend PHP che nasconde API key e prompt)
+  // ======================================================================
+
+  /**
+   * Apre (o riusa) una sessione di chat su AnythingLLM per il contesto corrente.
+   * Lato PHP (anyllm/chat_open.php):
+   *  - legge le impostazioni AnythingLLM da settings
+   *  - se esiste già un thread per (user_id, questionario_id, result_id) lo restituisce
+   *  - altrimenti crea un thread NUOVO inviando un "prompt di sistema" che
+   *    vincola l'agente a restare nel perimetro del summary/quiz/documenti.
+   *
+   * NB: chiama questo una volta quando entri nella pagina Chat (o quando cambi result_id).
+   */
+  openChatSessionViaBackend(args: {
+    user_id: number;
+    questionario_id: number;
+    result_id?: number; // summary specifico (facoltativo ma consigliato)
+  }): Observable<{ thread_slug: string; bootstrapped?: boolean; reused?: boolean }> {
+    const form = new FormData();
+    form.append('user_id', String(args.user_id));
+    form.append('questionario_id', String(args.questionario_id));
+    if (args.result_id != null) form.append('result_id', String(args.result_id));
+
+    return this.http.post<ApiResponse<{ thread_slug: string; bootstrapped?: boolean; reused?: boolean }>>(
+      `${this.apiBaseUrl}/anyllm/chat_open.php`,
+      form
+    ).pipe(
+      map((res) => {
+        if (!res?.success || !res.data?.thread_slug) {
+          // il backend garantisce thread_slug se ok
+          throw new Error(res?.message || 'Impossibile aprire la sessione di chat');
+        }
+        return res.data;
+      })
+    );
+  }
+
+  /**
+   * Invia un messaggio all'agente nel thread corrente.
+   * Lato PHP (anyllm/chat_send.php):
+   *  - risolve il thread da DB se non fornisci thread_slug (consigliato: lasciare al server)
+   *  - aggiunge metadata (user_id, questionario_id, result_id) per tracciabilità
+   *  - forwarda il messaggio ad AnythingLLM e normalizza la risposta { reply, thread_slug }
+   *
+   * NB: NON serve passare ogni volta prompt/contesto: è già “inchiodato”
+   *     nel thread al momento dell'open.
+   */
   sendChatMessageViaBackend(args: {
     user_id: number;
     questionario_id: number;
     message: string;
-    result_id?: number;
-    thread_slug?: string | null;
+    result_id?: number;            // per sicurezza/telemetria lato server
+    thread_slug?: string | null;   // opzionale: se lo hai, passalo; altrimenti ci pensa il server
   }): Observable<{ reply: string; thread_slug?: string | null; result_id?: number | null }> {
     const form = new FormData();
     form.append('user_id', String(args.user_id));
@@ -262,11 +308,14 @@ export class DataService {
     if (args.thread_slug) form.append('thread_slug', args.thread_slug);
 
     return this.http.post<ApiResponse<{ reply: string; thread_slug?: string; result_id?: number }>>(
-      `${this.apiBaseUrl}/anyllm/chat_send.php?${this.ts()}`,
+      `${this.apiBaseUrl}/anyllm/chat_send.php?${this.ts()}`, // cache-buster per sicurezza
       form
     ).pipe(
-      map(res => {
-        if (!res?.success) throw new Error(res?.message || 'Errore chat');
+      map((res) => {
+        if (!res?.success) {
+          throw new Error(res?.message || 'Errore chat');
+        }
+        // Normalizziamo il payload per il componente
         return {
           reply: res.data?.reply || '',
           thread_slug: res.data?.thread_slug || null,

@@ -36,6 +36,7 @@ export class ChatPage implements OnInit, OnDestroy {
   ];
 
   private routeSub?: Subscription;
+  private bootstrapped = false; // evitiamo doppio open
 
   constructor(
     private route: ActivatedRoute,
@@ -134,11 +135,6 @@ export class ChatPage implements OnInit, OnDestroy {
       return;
     }
 
-    // se manca il questionario_id, prova inferirlo via latest result (opzionale)
-    if (!this.questionarioId && this.resultId) {
-      // qui potresti fare una API che mappa result_id -> questionario_id se necessario
-    }
-
     // se manca resultId prova a recuperarlo dal summary
     if (this.userId && this.questionarioId && !this.resultId) {
       const overlay = await this.loadingCtrl.create({ message: 'Recupero contesto…', spinner: 'crescent' });
@@ -168,6 +164,25 @@ export class ChatPage implements OnInit, OnDestroy {
     });
 
     this.ready = !!this.userId && !!this.questionarioId && !!this.resultId && this.resultId > 0;
+
+    // === NEW: bootstrap thread una volta, così il prompt di sistema viene fissato lato server ===
+    if (this.ready && !this.bootstrapped) {
+      try {
+        const opened = await firstValueFrom(
+          this.data.openChatSessionViaBackend({
+            user_id: this.userId!,
+            questionario_id: this.questionarioId!,
+            result_id: this.resultId! // lega la chat al summary
+          })
+        );
+        this.threadSlug = opened?.thread_slug || this.threadSlug;
+        this.bootstrapped = true;
+      } catch (e) {
+        // Se fallisce l'open non blocchiamo la pagina: il send può comunque andare (il server può risolvere il thread)
+        console.warn('openChatSessionViaBackend failed:', e);
+      }
+    }
+
     if (this.ready) this.scrollToBottom();
   }
 
@@ -207,7 +222,7 @@ export class ChatPage implements OnInit, OnDestroy {
           user_id: this.userId!,
           questionario_id: this.questionarioId!,
           result_id: this.resultId!,
-          thread_slug: this.threadSlug || undefined,
+          thread_slug: this.threadSlug || undefined, // opzionale: il server sa risolvere anche senza
           message: text
         })
       );
