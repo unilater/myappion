@@ -7,13 +7,20 @@ import { Subject, firstValueFrom, of } from 'rxjs';
 import { finalize, takeUntil, debounceTime, distinctUntilChanged, switchMap, catchError, map } from 'rxjs/operators';
 import { DataService } from 'src/app/services/data/data.service';
 
-type UploadOpt = { id: number; nome: string };
+type UploadOpt = { id: number; nome: string }; // id = tipologia_id
 type Question = {
   id: number;
   testo_domanda: string;
   tipo?: string | null;
   opzioni?: any;
   obbligatoria?: boolean;
+};
+
+type UserFileSummary = {
+  user_file_id: number;
+  tipologia_id: number | null;
+  filename: string;
+  url?: string;
 };
 
 @Component({
@@ -32,10 +39,20 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
 
   // Dati
   questions: Question[] = [];
-  /** Stato locale upload: { [qId]: { [optId]: { nome, file? } } } */
-  uploads: Record<string, Record<string, { nome: string; file?: File }>> = {};
 
-  // Meta (titolo/descrizione) per header e intro
+  /**
+   * Stato locale uploads:
+   * - uploadsQueue: file scelti ma non ancora caricati (per retry/indicatore)
+   * - uploadsVisuals: metadati visuali (filename/url) per gli user_file_id salvati nel form
+   */
+  uploadsQueue:   Record<string, Record<string, { nome: string; file: File }>> = {};
+  uploadsVisuals: Record<string, Record<string, { user_file_id?: number; filename?: string; url?: string }>> = {};
+
+  // Files esistenti per tipologia (user-centric)
+  existingByType: Record<string, UserFileSummary[]> = {}; // { [tipologia_id]: UserFileSummary[] }
+  fileIndex: Record<number, UserFileSummary> = {};        // { user_file_id: summary }
+
+  // Meta (titolo/descrizione)
   qTitle: string | null = null;
   qDesc: string | null = null;
 
@@ -105,14 +122,18 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
         this.setCompleteState(false);
         this.isSubmitted = false;
         this.questions = [];
-        this.uploads = {};
+        this.uploadsQueue = {};
+        this.uploadsVisuals = {};
+        this.existingByType = {};
+        this.fileIndex = {};
         this.questionarioForm = new FormGroup({});
         this.currentStep = 0;
         this.qTitle = null;
         this.qDesc = null;
 
         await this.loadDomande(this.questionarioId);
-        await this.loadUserData(this.userId!, this.questionarioId);
+        await this.loadExistingUploadsByType(this.userId!);        // 1) catalogo file user
+        await this.loadUserData(this.userId!, this.questionarioId); // 2) risposte salvate
       });
   }
 
@@ -122,22 +143,54 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
   }
 
   // ======= Utils =======
-  /** True se domanda upload: tipo === 'upload' o tipo vuoto + opzioni {nome}[] */
+  /** True se domanda upload: tipo === 'upload' OPPURE opzioni array non vuoto */
   private isUploadQuestion(q: Question): boolean {
     const t = (q?.tipo || '').toString().trim().toLowerCase();
-    const looksLikeUploadOptions =
-      Array.isArray(q?.opzioni) &&
-      q.opzioni.length > 0 &&
-      q.opzioni.every((o: any) => o && typeof o === 'object' && 'nome' in o);
-    return t === 'upload' || (!t && looksLikeUploadOptions);
+    const hasOptions = Array.isArray(q?.opzioni) && q.opzioni.length > 0;
+    return t === 'upload' || (!t && hasOptions);
   }
 
-  /** Ritorna il nome file salvato nel FormControl (server-side) */
-  savedUploadName(qId: number, optId: number): string | null {
+  /** Normalizza opzioni in { id:number, nome:string } */
+  private normalizeUploadOptions(raw: any): Array<{ id: number; nome: string }> {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((o: any, idx: number) => {
+      if (o && typeof o === 'object' && ('id' in o || 'tipologia_id' in o || 'nome' in o)) {
+        const id = Number(o.id ?? o.tipologia_id ?? idx + 1);
+        const nome = String(o.nome ?? o.label ?? o.titolo ?? o.name ?? o.text ?? `Documento ${id}`).trim();
+        return { id, nome: nome || `Documento ${id}` };
+      }
+      if (typeof o === 'string') {
+        const nome = o.trim();
+        return { id: idx + 1, nome: nome || `Documento ${idx + 1}` };
+      }
+      return { id: idx + 1, nome: `Documento ${idx + 1}` };
+    });
+  }
+
+  /** leggi/scrivi user_file_id nel form */
+  private savedUserFileId(qId: number, optId: number): number | null {
     const val = this.questionarioForm.get(String(qId))?.value;
-    // supporta sia chiave number che string
-    const key = (val && (val[optId] ?? val[String(optId)]));
-    return key ? String(key) : null;
+    const raw = val && (val[optId] ?? val[String(optId)]);
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  private setUserFileIdInForm(qId: number, optId: number, userFileId: number | null, emit = false) {
+    const key = String(qId);
+    const ctrl = this.questionarioForm.get(key);
+    if (!ctrl) return;
+    const prev = ctrl.value || {};
+    if (userFileId === null) {
+      const clone = { ...prev };
+      delete clone[String(optId)];
+      ctrl.setValue(Object.keys(clone).length ? clone : null, { emitEvent: emit });
+    } else {
+      ctrl.setValue({ ...prev, [String(optId)]: userFileId }, { emitEvent: emit });
+    }
+  }
+
+  /** Nome file da mostrare (visual), se disponibile */
+  displayFilename(qId: number, optId: number): string | null {
+    return this.uploadsVisuals[String(qId)]?.[String(optId)]?.filename || null;
   }
 
   /** Autosave con debounce su tutte le modifiche del form */
@@ -150,7 +203,7 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
           this.dataService.postQuestionarioPremium({
             user_id: this.userId!,
             questionario_id: this.questionarioId!,
-            questionario: val
+            questionario: val   // contiene user_file_id per le opzioni upload
           }).pipe(catchError(() => of(null)))
         ),
         takeUntil(this.destroy$)
@@ -175,15 +228,21 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
       }
 
       if (res?.success && res?.data) {
-        this.questions = (res.data as Question[]).sort((a: any, b: any) => a.id - b.id);
+        this.questions = (res.data as Question[])
+          .map(q => {
+            if (this.isUploadQuestion(q)) {
+              q.opzioni = this.normalizeUploadOptions(q.opzioni);
+            }
+            return q;
+          })
+          .sort((a: any, b: any) => a.id - b.id);
 
         const group: { [key: string]: FormControl } = {};
         this.questions.forEach(q => {
           const key = q.id.toString();
 
           if (this.isUploadQuestion(q)) {
-            this.uploads[key] = {};
-            // placeholder non required
+            // map { [optId]: user_file_id:number }
             group[key] = new FormControl({ value: null, disabled: this.isComplete });
           } else {
             const validators = q.obbligatoria ? [Validators.required] : [];
@@ -229,6 +288,24 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
     }
   }
 
+  /** Carica file già caricati dall’utente e indicizza per tipologia + per id */
+  private async loadExistingUploadsByType(userId: number) {
+    try {
+      const res: any = await firstValueFrom(
+        this.dataService.getUserFilesByTipologia(userId).pipe(catchError(() => of({ success:false, data:[] })))
+      );
+      const list: UserFileSummary[] = (res?.success && Array.isArray(res.data)) ? res.data : [];
+      this.existingByType = {};
+      this.fileIndex = {};
+      for (const item of list) {
+        const key = String(item.tipologia_id ?? 0);
+        if (!this.existingByType[key]) this.existingByType[key] = [];
+        this.existingByType[key].push(item);
+        this.fileIndex[item.user_file_id] = item;
+      }
+    } catch { /* ignore */ }
+  }
+
   private async loadUserData(userId: number, questionarioId: number) {
     const loading = await this.loadingCtrl.create({ message: 'Recupero le tue risposte…', spinner: 'crescent' });
     await loading.present();
@@ -240,8 +317,25 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
 
       if (res?.success && res?.data) {
         Object.keys(res.data).forEach(key => {
-          const ctrl = (this.questionarioForm.controls as any)[key];
+          const ctrl = this.questionarioForm.get(key);
           if (ctrl) ctrl.patchValue(res.data[key], { emitEvent: false });
+
+          // Popola i visuals se troviamo user_file_id salvati
+          const value = res.data[key];
+          if (value && typeof value === 'object') {
+            for (const optId of Object.keys(value)) {
+              const uId = Number(value[optId]);
+              const sum = this.fileIndex[uId];
+              if (sum) {
+                if (!this.uploadsVisuals[key]) this.uploadsVisuals[key] = {};
+                this.uploadsVisuals[key][optId] = {
+                  user_file_id: uId,
+                  filename: sum.filename,
+                  url: sum.url
+                };
+              }
+            }
+          }
         });
         this.setCompleteState(false);
       }
@@ -256,51 +350,64 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
     input.click();
   }
 
-  /** Upload immediato + aggiorno il form col nome restituito dal server */
+  /** Upload immediato (user-centric): backend deduplica, ritorna user_file_id e linka al questionario */
   onFileChosen(evt: Event, qId: number, opt: UploadOpt) {
     const input = evt.target as HTMLInputElement;
     const file = input.files && input.files[0];
     if (!file) return;
 
+    // Verifica tipologia valida
+    const tipologiaId = Number(opt.id);
+    if (!Number.isFinite(tipologiaId) || tipologiaId <= 0) {
+      this.presentToast('Tipologia non valida: manca l’ID del documento', 'danger');
+      return;
+    }
+
     const qKey = String(qId);
     const oKey = String(opt.id);
 
-    // Optimistic: metto il nome nel form (senza valueChanges)
-    const ctrl = this.questionarioForm.controls[qKey];
-    if (ctrl) ctrl.setValue({ ...(ctrl.value || {}), [oKey]: file.name }, { emitEvent: false });
+    // Coda locale per UI
+    if (!this.uploadsQueue[qKey]) this.uploadsQueue[qKey] = {};
+    this.uploadsQueue[qKey][oKey] = { nome: opt.nome, file };
 
-    // Stato locale (per UI/retry)
-    if (!this.uploads[qKey]) this.uploads[qKey] = {};
-    this.uploads[qKey][oKey] = { nome: opt.nome, file };
-
-    // Upload al volo
     this.dataService.uploadFilePremium(
-      this.userId!,
-      this.questionarioId!,
-      opt.id,     // tipologia_id
-      file,
-      opt.nome    // etichetta
+      this.userId!, this.questionarioId!, tipologiaId, file, opt.nome
     ).subscribe({
       next: async (res: any) => {
-        if (res?.success) {
-          await this.presentToast(`Caricato: ${file.name}`, 'success');
+        const data = res?.data || {};
+        const userFileId = Number(data.user_file_id ?? data.id ?? 0);
+        if (res?.success && userFileId > 0) {
+          const filename   = file.name;
+          const url        = data.download_url || data.presigned_url || data.url || null;
 
-          // Nome definitivo salvato dal server (es. percorso in B2)
-          const serverName =
-            (res.data && (res.data.b2_file_name || res.data.file_name)) || file.name;
+          // visuals
+          if (!this.uploadsVisuals[qKey]) this.uploadsVisuals[qKey] = {};
+          this.uploadsVisuals[qKey][oKey] = { user_file_id: userFileId, filename, url: url || undefined };
 
-          if (ctrl) ctrl.setValue({ ...(ctrl.value || {}), [oKey]: serverName }, { emitEvent: false });
+          // scrivi nel form l'ID (non il nome)
+          this.setUserFileIdInForm(qId, tipologiaId, userFileId, false);
 
-          // Pulizia coda
-          delete this.uploads[qKey][oKey];
-          if (Object.keys(this.uploads[qKey]).length === 0) delete this.uploads[qKey];
+          // aggiorna indici locali di riuso per tipologia
+          const tipKey = String(tipologiaId);
+          const summary: UserFileSummary = { user_file_id: userFileId, tipologia_id: tipologiaId, filename, url: url || undefined };
+          if (!this.existingByType[tipKey]) this.existingByType[tipKey] = [];
+          if (!this.existingByType[tipKey].some(x => x.user_file_id === userFileId)) {
+            this.existingByType[tipKey].push(summary);
+          }
+          this.fileIndex[userFileId] = summary;
 
-          // Autosave silenzioso
+          // pulizia coda
+          delete this.uploadsQueue[qKey][oKey];
+          if (Object.keys(this.uploadsQueue[qKey]).length === 0) delete this.uploadsQueue[qKey];
+
+          // autosave silenzioso
           this.dataService.postQuestionarioPremium({
             user_id: this.userId!,
             questionario_id: this.questionarioId!,
             questionario: this.questionarioForm.value
           }).pipe(catchError(() => of(null))).subscribe();
+
+          await this.presentToast(`Caricato: ${filename}`, 'success');
         } else {
           await this.presentToast('Upload fallito', 'danger');
         }
@@ -311,71 +418,79 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
     });
   }
 
-  /** helper: rimuove il valore dal form e fa autosave "leggero" */
-  private removeFileFromForm(qId: number, optId: number) {
+  /** Usa un file già caricato dall’utente per quella tipologia (nessun re-upload) */
+  async useExisting(qId: number, opt: UploadOpt, file: UserFileSummary) {
+    if (this.isComplete) return;
+
+    const overlay = await this.loadingCtrl.create({ message: 'Collego il file…', spinner: 'crescent' });
+    await overlay.present();
+
+    try {
+      const res: any = await firstValueFrom(
+        this.dataService.attachUserFileToQuestionario(
+          this.userId!, this.questionarioId!, file.user_file_id, opt.id
+        ).pipe(finalize(() => overlay.dismiss()))
+      );
+
+      if (res?.success) {
+        const qKey = String(qId);
+        const oKey = String(opt.id);
+
+        // visuals
+        if (!this.uploadsVisuals[qKey]) this.uploadsVisuals[qKey] = {};
+        this.uploadsVisuals[qKey][oKey] = {
+          user_file_id: file.user_file_id,
+          filename: file.filename,
+          url: file.url
+        };
+
+        // scrivi nel form l'ID
+        this.setUserFileIdInForm(qId, opt.id, file.user_file_id, false);
+
+        // autosave
+        this.dataService.postQuestionarioPremium({
+          user_id: this.userId!,
+          questionario_id: this.questionarioId!,
+          questionario: this.questionarioForm.value
+        }).pipe(catchError(() => of(null))).subscribe();
+
+        await this.presentToast('File collegato.', 'success');
+      } else {
+        await this.presentToast(res?.message || 'Impossibile collegare il file', 'danger');
+      }
+    } catch {
+      await this.presentToast('Errore di rete durante il collegamento', 'danger');
+    }
+  }
+
+  /** Rimuove il valore dal form (il delete fisico/DB lo decidiamo dopo) */
+  async clearChosen(qId: number, opt: UploadOpt) {
+    if (this.isComplete) return;
+
     const qKey = String(qId);
-    const oKey = String(optId);
-    const ctrl = this.questionarioForm.controls[qKey];
-    if (!ctrl) return;
+    const oKey = String(opt.id);
 
-    const v = { ...(ctrl.value || {}) };
-    delete v[oKey];
-    ctrl.setValue(Object.keys(v).length ? v : null, { emitEvent: false });
+    // Se è in coda locale e non caricato ancora → pulizia locale
+    if (this.uploadsQueue[qKey]?.[oKey]) {
+      delete this.uploadsQueue[qKey][oKey];
+      if (Object.keys(this.uploadsQueue[qKey]).length === 0) delete this.uploadsQueue[qKey];
+    }
 
+    // TODO (in futuro): detach lato server senza delete fisico
+    // this.dataService.detachUploadPremium(this.userId!, this.questionarioId!, this.savedUserFileId(qId, opt.id)!, opt.id)
+
+    // pulizia visuals + form
+    if (this.uploadsVisuals[qKey]?.[oKey]) delete this.uploadsVisuals[qKey][oKey];
+    this.setUserFileIdInForm(qId, opt.id, null, false);
+
+    // autosave
     this.dataService.postQuestionarioPremium({
       user_id: this.userId!,
       questionario_id: this.questionarioId!,
       questionario: this.questionarioForm.value
     }).pipe(catchError(() => of(null))).subscribe();
-  }
 
-  /** Rimuove selezione/salvataggio del file da UI + server + form */
-  async clearChosen(qId: number, opt: UploadOpt) {
-    if (this.isComplete) return;
-
-    const saved = this.savedUploadName(qId, opt.id); // path salvato (es. premium/user-.../file.pdf)
-
-    // 1) Se è solo in coda locale (non ancora caricato), pulisco stato + form e basta
-    if (!saved && this.uploads[String(qId)]?.[String(opt.id)]?.file) {
-      delete this.uploads[String(qId)][String(opt.id)];
-      if (Object.keys(this.uploads[String(qId)]).length === 0) delete this.uploads[String(qId)];
-      this.removeFileFromForm(qId, opt.id);
-      await this.presentToast('File rimosso.', 'success');
-      return;
-    }
-
-    // 2) Se era già caricato: chiamo endpoint di delete (B2 + DB) e poi pulisco il form
-    if (saved) {
-      const overlay = await this.loadingCtrl.create({ message: 'Elimino file…', spinner: 'crescent' });
-      await overlay.present();
-
-      try {
-        const res: any = await firstValueFrom(
-          this.dataService.deleteUploadPremium(this.userId!, this.questionarioId!, opt.id, String(qId))
-            .pipe(finalize(() => overlay.dismiss()))
-        );
-
-        if (res?.success) {
-          // pulizia locale
-          if (this.uploads[String(qId)]?.[String(opt.id)]) {
-            delete this.uploads[String(qId)][String(opt.id)];
-            if (Object.keys(this.uploads[String(qId)]).length === 0) delete this.uploads[String(qId)];
-          }
-          this.removeFileFromForm(qId, opt.id);
-          await this.presentToast('File eliminato.', 'success');
-        } else {
-          await this.presentToast(res?.message || 'Impossibile eliminare il file', 'danger');
-        }
-      } catch {
-        await this.presentToast('Errore di rete durante l’eliminazione', 'danger');
-      }
-
-      return;
-    }
-
-    // 3) Fallback: nessun saved e nessuna coda → solo pulizia form (idempotente)
-    this.removeFileFromForm(qId, opt.id);
-    await this.presentToast('File rimosso.', 'success');
+    await this.presentToast('File rimosso dal questionario.', 'success');
   }
 
   // ======= Submit =======
@@ -401,7 +516,7 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
       return;
     }
 
-    // Salvataggio finale (i file sono già stati caricati al volo)
+    // Salvataggio finale (i file sono già gestiti al volo)
     this.isSubmitted = true;
     const loading = await this.loadingCtrl.create({ message: 'Salvataggio finale…', spinner: 'crescent' });
     await loading.present();
@@ -409,7 +524,7 @@ export class PremiumDetailPage implements OnInit, OnDestroy {
     const payload = {
       user_id: this.userId!,
       questionario_id: this.questionarioId!,
-      questionario: this.questionarioForm.value
+      questionario: this.questionarioForm.value  // contiene user_file_id per le opzioni upload
     };
 
     this.dataService.postQuestionarioPremium(payload).pipe(

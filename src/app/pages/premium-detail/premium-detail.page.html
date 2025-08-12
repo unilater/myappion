@@ -96,7 +96,7 @@
           </ion-select>
         </ion-item>
 
-        <!-- UPLOAD (layout migliorato) -->
+        <!-- UPLOAD (user-centric) -->
         <div
           *ngIf="(q.tipo || '').toLowerCase() === 'upload' || (!q.tipo && q.opzioni?.length)"
           class="q-item ion-padding-vertical upload-block"
@@ -108,25 +108,31 @@
               <ion-label class="upload-label">
                 <div class="u-name">{{ opt?.nome }}</div>
 
-                <!-- appena selezionato -->
-                <div class="u-file" *ngIf="uploads[q.id]?.[opt.id]?.file as f">
+                <!-- appena selezionato (in coda) -->
+                <div class="u-file" *ngIf="uploadsQueue[q.id]?.[opt.id]?.file as f">
                   <ion-badge color="tertiary" class="u-badge">In coda</ion-badge>
                   <span class="u-filename">{{ f.name }}</span>
                 </div>
 
-                <!-- già caricato -->
-                <div class="u-file" *ngIf="!uploads[q.id]?.[opt.id]?.file && savedUploadName(q.id, opt.id) as savedName">
-                  <ion-badge color="success" class="u-badge">Caricato</ion-badge>
-                  <span class="u-filename">{{ savedName }}</span>
+                <!-- già collegato (da server/user-centric) -->
+                <div class="u-file" *ngIf="!uploadsQueue[q.id]?.[opt.id]?.file && displayFilename(q.id, opt.id) as friendlyName">
+                  <ion-badge color="success" class="u-badge">Collegato</ion-badge>
+                  <span class="u-filename">
+                    <ng-container *ngIf="uploadsVisuals[q.id]?.[opt.id]?.url; else noLink">
+                      <a [href]="uploadsVisuals[q.id][opt.id].url" target="_blank" rel="noopener">{{ friendlyName }}</a>
+                    </ng-container>
+                    <ng-template #noLink>{{ friendlyName }}</ng-template>
+                  </span>
                 </div>
 
-                <!-- nulla -->
-                <div class="u-file empty" *ngIf="!uploads[q.id]?.[opt.id]?.file && !savedUploadName(q.id, opt.id)">
+                <!-- nessun file -->
+                <div class="u-file empty" *ngIf="!uploadsQueue[q.id]?.[opt.id]?.file && !displayFilename(q.id, opt.id)">
                   <ion-badge color="medium" class="u-badge">Nessun file</ion-badge>
                 </div>
               </ion-label>
 
               <div class="upload-actions" slot="end">
+                <!-- Scegli nuovo file -->
                 <input
                   #fileInput
                   type="file"
@@ -142,9 +148,24 @@
                   Scegli
                 </ion-button>
 
+                <!-- Usa già caricato (lista per tipologia) -->
+                <ion-select
+                  placeholder="Usa file già caricato"
+                  interface="popover"
+                  *ngIf="existingByType[opt.id]?.length"
+                  (ionChange)="useExisting(q.id, opt, $event.detail.value)"
+                  [disabled]="isComplete"
+                  class="reuse-select"
+                >
+                  <ion-select-option *ngFor="let f of existingByType[opt.id]" [value]="f">
+                    {{ f.filename }}
+                  </ion-select-option>
+                </ion-select>
+
+                <!-- Rimuovi dal questionario (no delete fisico per ora) -->
                 <ion-button color="medium"
                             fill="clear"
-                            *ngIf="uploads[q.id]?.[opt.id]?.file || savedUploadName(q.id, opt.id)"
+                            *ngIf="uploadsQueue[q.id]?.[opt.id]?.file || displayFilename(q.id, opt.id)"
                             (click)="clearChosen(q.id, opt)"
                             [disabled]="isComplete"
                             [attr.aria-label]="'Rimuovi file ' + (opt?.nome || '')">
@@ -156,7 +177,8 @@
 
           <ion-note class="hint ion-padding-top">
             Carica i documenti richiesti (es. “CU”, “Dichiarazione Redditi 2025”, “IMU”).
-            <strong>I file vengono inviati subito dopo la selezione.</strong>
+            <strong>I file vengono inviati subito dopo la selezione.</strong><br />
+            Se hai già caricato un documento uguale in un altro questionario, scegli <em>“Usa file già caricato”</em>.
           </ion-note>
         </div>
       </ng-container>
@@ -172,8 +194,8 @@
       <div class="spacer"></div>
 
       <ion-button *ngIf="currentStep < totalSteps - 1"
-                  (click)="nextStep()"
-                  [disabled]="!isStepValid() || isComplete">
+                  (click)="nextStep()
+                  " [disabled]="!isStepValid() || isComplete">
         Avanti
         <ion-icon slot="end" name="chevron-forward-outline"></ion-icon>
       </ion-button>

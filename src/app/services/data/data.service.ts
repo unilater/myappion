@@ -70,7 +70,7 @@ export class DataService {
     );
   }
 
-  /** Dettaglio “soft”: ricava info del singolo questionario dalla lista già esposta dall’API. */
+  /** Dettaglio “soft” dal listing premium */
   getQuestionarioPremiumInfo(questionarioId: number): Observable<PremiumQuestionarioListItem | null> {
     return this.getElencoQuestionariPremium().pipe(
       map(res => {
@@ -132,7 +132,7 @@ export class DataService {
   }
 
   // =======================
-  // UPLOAD PREMIUM
+  // UPLOAD PREMIUM (user-centric)
   // =======================
   uploadFilePremium(
     userId: number,
@@ -140,7 +140,7 @@ export class DataService {
     tipologiaId: number,
     file: File,
     nome?: string
-  ): Observable<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string }>> {
+  ): Observable<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string; user_file_id?: number }>> {
     const form = new FormData();
     form.append('user_id', String(userId));
     form.append('questionario_id', String(questionarioId));
@@ -148,24 +148,49 @@ export class DataService {
     if (nome) form.append('nome', nome);
     form.append('file', file, file.name);
 
-    return this.http.post<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string }>>(
+    return this.http.post<ApiResponse<{ file_name?: string; url?: string; path?: string; b2_file_name?: string; user_file_id?: number }>>(
       `${this.apiBaseUrl}/upload_premium_b2.php?${this.ts()}`,
       form
     );
   }
-  
-  deleteUploadPremium(
-  userId: number,
-  questionarioId: number,
-  tipologiaId: number,
-  questionId?: string
-) {
-  const qid = questionId ? `&question_id=${encodeURIComponent(questionId)}` : '';
-  return this.http.get<ApiResponse>(
-    `${this.apiBaseUrl}/delete_premium_file.php?user_id=${userId}&questionario_id=${questionarioId}&tipologia_id=${tipologiaId}${qid}&${this.ts()}`
-  );
-}
 
+  /** NUOVO: lista file dell’utente raggruppati per tipologia (per re-use) */
+  getUserFilesByTipologia(userId: number) {
+    return this.http.get<ApiResponse<Array<{ user_file_id: number; tipologia_id: number | null; filename: string; url?: string }>>>(
+      `${this.apiBaseUrl}/user_files_by_tipologia.php?user_id=${userId}&${this.ts()}`
+    );
+  }
+
+  /** NUOVO: collega un file già caricato al questionario corrente (senza ri-caricare) */
+  attachUserFileToQuestionario(
+    userId: number,
+    questionarioId: number,
+    userFileId: number,
+    tipologiaId: number
+  ) {
+    return this.http.post<ApiResponse>(
+      `${this.apiBaseUrl}/attach_user_file_to_questionario.php?${this.ts()}`,
+      { user_id: userId, questionario_id: questionarioId, user_file_id: userFileId, tipologia_id: tipologiaId }
+    );
+  }
+
+  /** (IN ATTESA) detach logico — lo implementeremo quando farai l’API */
+  // detachUploadPremium(userId: number, questionarioId: number, userFileId: number, tipologiaId: number) { ... }
+
+  // =======================
+  // Delete (legacy – lasciamo com’è finché non spostiamo tutto su detach)
+  // =======================
+  deleteUploadPremium(
+    userId: number,
+    questionarioId: number,
+    tipologiaId: number,
+    questionId?: string
+  ) {
+    const qid = questionId ? `&question_id=${encodeURIComponent(questionId)}` : '';
+    return this.http.get<ApiResponse>(
+      `${this.apiBaseUrl}/delete_premium_file.php?user_id=${userId}&questionario_id=${questionarioId}&tipologia_id=${tipologiaId}${qid}&${this.ts()}`
+    );
+  }
 
   // =======================
   // Servizi AI (legacy standard)
